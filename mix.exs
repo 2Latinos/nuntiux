@@ -15,11 +15,20 @@ defmodule Nuntiux.MixProject do
       dialyzer: dialyzer(),
       elixir: @elixir,
       elixirc_options: elixirc_options(),
-      source_url: @github,
       name: "Nuntiux",
       package: package(),
       preferred_cli_env: [ci: :test],
+      source_url: @github,
       version: @version
+    ]
+  end
+
+  def application do
+    start_args = []
+
+    [
+      extra_applications: [:logger],
+      mod: {Nuntiux.Application, start_args}
     ]
   end
 
