@@ -1,6 +1,6 @@
 # nuntiux [![Elixir CI][ci-img]][ci]
 
-[ci]: https://github.com/2Latinos/nuntiux
+[ci]: https://github.com/2Latinos/nuntiux/actions
 [ci-img]: https://github.com/2Latinos/nuntiux/actions/workflows/elixir.yml/badge.svg
 
 `nuntiux` is an Elixir library to mock registered processes. Its main use case is to intercept
@@ -13,9 +13,8 @@ in an initial release.
 
 ## Usage
 
-`nuntiux` is best used via [mix](https://hexdocs.pm/mix/main/Mix.html)'s `test` environment and
+`nuntiux` is best used via [Mix](https://hexdocs.pm/mix/main/Mix.html)'s `test` environment and
 using the [`mix test`](https://hexdocs.pm/mix/Mix.Tasks.Test.html) task:
-
 
 1\. change your `mix.exs`' `deps` to include:
 
@@ -25,7 +24,7 @@ using the [`mix test`](https://hexdocs.pm/mix/Mix.Tasks.Test.html) task:
 
 2\. run your `nuntiux`-enabled tests with:
 
-```shell
+```plain
 mix test
 ```
 
@@ -64,7 +63,7 @@ the mocked process.
 
 Documentation is generated with:
 
-```shell
+```plain
 mix docs
 ```
 
@@ -96,4 +95,4 @@ accepted and welcome. Check [CONTRIBUTING.md](CONTRIBUTING.md) for more.
 
 ## License
 
-Check [LICENSE](LICENSE).
+Check [LICENSE.md](LICENSE.md).
