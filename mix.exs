@@ -1,15 +1,25 @@
 defmodule Nuntiux.MixProject do
   use Mix.Project
 
+  @version "1.0.0"
+  @elixir "~> 1.12"
+
+  @github "https://github.com/2Latinos/nuntiux"
+
   def project do
     [
       aliases: aliases(),
       app: :nuntiux,
       deps: deps(),
+      description: "A library to mock registered processes",
       dialyzer: dialyzer(),
+      elixir: @elixir,
       elixirc_options: elixirc_options(),
+      source_url: @github,
+      name: "Nuntiux",
+      package: package(),
       preferred_cli_env: [ci: :test],
-      version: "1.0.0"
+      version: @version
     ]
   end
 
@@ -45,5 +55,17 @@ defmodule Nuntiux.MixProject do
     ]
   end
 
-  defp elixirc_options, do: [warnings_as_errors: true]
+  defp elixirc_options do
+    [
+      warnings_as_errors: true
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{GitHub: @github},
+      maintainers: ["2Latinos"]
+    ]
+  end
 end
