@@ -1,0 +1,43 @@
+---
+name: Elixir CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        otp: ['24', '25', '26']
+        elixir: ['1.12', '1.13', '1.14']
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: erlef/setup-beam@v1
+        id: setup-beam
+        with:
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+      - name: Restore _build
+        uses: actions/cache@v3
+        with:
+          path: _build
+          key: "_build-cache-for\
+                -os-${{runner.os}}\
+                -otp-${{steps.setup-beam.outputs.otp-version}}\
+                -elixir-${{steps.setup-beam.outputs.elixir-version}}\
+                -hash-${{hashFiles('mix.lock')}}"
+      - name: Restore deps
+        uses: actions/cache@v3
+        with:
+          path: deps
+          key: "deps-cache-for\
+                -os-${{runner.os}}\
+                -otp-${{steps.setup-beam.outputs.otp-version}}\
+                -elixir-${{steps.setup-beam.outputs.elixir-version}}\
+                -hash-${{hashFiles('mix.lock')}}"
+      - name: Format check
+        run: mix format --check-formatted
+      - name: CI
+        run: mix ci
