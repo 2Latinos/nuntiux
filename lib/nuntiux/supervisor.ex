@@ -5,10 +5,9 @@ defmodule Nuntiux.Supervisor do
   @supervisor __MODULE__
 
   @impl DynamicSupervisor
-  def init(start_args) do
+  def init(_start_args) do
     strategy = :one_for_one
-    extra_arguments = [start_args]
-    DynamicSupervisor.init(strategy: strategy, extra_arguments: extra_arguments)
+    DynamicSupervisor.init(strategy: strategy)
   end
 
   @spec start_link(start_args) :: ok | error
@@ -28,15 +27,18 @@ defmodule Nuntiux.Supervisor do
              error: {:error, :not_found}
   def start_mock(process_name, opts) do
     child = Nuntiux.Mocker
+    module = child
+    function = :start_link
     child_args = [process_name, opts]
-    child_spec = {child, child_args}
+
+    child_spec = %{
+      id: child,
+      start: {module, function, child_args}
+    }
 
     case DynamicSupervisor.start_child(@supervisor, child_spec) do
-      {:ok, _other} ->
-        :ok
-
-      {:error, :not_found} = error ->
-        error
+      {:ok, _pid} -> :ok
+      :ignore -> {:error, :not_found}
     end
   end
 
