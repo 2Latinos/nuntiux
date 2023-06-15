@@ -42,9 +42,9 @@ intercept (and optionally handle) every message that was supposed to go to the l
 The following parameters allow you to configure the interaction between the mock and mocked
 processes, as well as other elements for debugging:
 
-* `:passthrough`: when `true` (default: `true`) all messages received by the mock process are
+* `:passthrough?`: when `true` (default: `true`) all messages received by the mock process are
 passed through to the mocked process,
-* `:history`: when `true` (default: `true`) all messages received by the mock process are
+* `:history?`: when `true` (default: `true`) all messages received by the mock process are
 classified as per [Understanding the message history](#understanding-the-message-history).
 
 ## Understanding the message history
@@ -54,9 +54,9 @@ History elements are classified with 4 keys:
 * `:timestamp`: an integer representing Erlang system time in native time unit,
 * `:message`: the message that was received and/or potentially handled by expectations
 (or passed through),
-* `:mocked`: an indication of whether or not any of the expecations you declared handled
+* `:mocked?`: an indication of whether or not any of the expecations you declared handled
 the message,
-* `:passed_through`: an indication of whether or not the received message was passed through to
+* `:passed_through?`: an indication of whether or not the received message was passed through to
 the mocked process.
 
 ## Documentation

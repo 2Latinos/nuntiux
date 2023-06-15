@@ -1,9 +1,12 @@
 defmodule Nuntiux do
-  @moduledoc false
+  @moduledoc """
+  This is Nuntiux.
+  """
 
   @application :nuntiux
 
-  @type opts :: [{:passthrough, boolean()} | {:history, boolean()}]
+  @opaque opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
+
   @type process_name :: atom()
 
   @doc """
