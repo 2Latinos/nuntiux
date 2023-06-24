@@ -10,10 +10,7 @@ defmodule Nuntiux.Mocker do
            opts: Nuntiux.opts()
          }
 
-  @doc """
-  Boots up a mocking process.
-  If the process to be mocked doesn't exist, returns <pre>ignore</pre>.
-  """
+  @doc false
   @spec start_link(process_name, opts) :: ok | ignore
         when process_name: Nuntiux.process_name(),
              opts: Nuntiux.opts(),
