@@ -1,5 +1,5 @@
 defmodule NuntiuxTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Nuntiux
 
   @mocked :mocked
@@ -52,7 +52,7 @@ defmodule NuntiuxTest do
     end
   end
 
-  def mocked do
+  defp mocked do
     # A basic plus oner
     receive do
       {caller, ref, a_number} ->
