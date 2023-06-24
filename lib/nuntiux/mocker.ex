@@ -10,6 +10,8 @@ defmodule Nuntiux.Mocker do
            opts: Nuntiux.opts()
          }
 
+  @mocked_process_key :"#{__MODULE__}.mocked_process"
+
   @doc false
   @spec start_link(process_name, opts) :: ok | ignore
         when process_name: Nuntiux.process_name(),
@@ -33,8 +35,22 @@ defmodule Nuntiux.Mocker do
   @spec delete(process_name) :: ok
         when process_name: Nuntiux.process_name(),
              ok: :ok
-  def delete(_process_name) do
-    :ok
+  def delete(process_name) do
+    process_pid = mocked_process(process_name)
+    reregister(process_name, process_pid)
+  end
+
+  @doc false
+  @spec mocked_process(process_name) :: pid
+        when process_name: Nuntiux.process_name(),
+             pid: pid()
+  def mocked_process(process_name) do
+    {:dictionary, dict} =
+      process_name
+      |> Process.whereis()
+      |> Process.info(:dictionary)
+
+    Keyword.get(dict, @mocked_process_key)
   end
 
   @doc false
@@ -44,11 +60,10 @@ defmodule Nuntiux.Mocker do
              opts: Nuntiux.opts(),
              no_return: no_return()
   def init(process_name, process_pid, opts) do
-    self = self()
+    mocker_pid = self()
     process_monitor = Process.monitor(process_pid)
-    Process.unregister(process_name)
-    Process.register(self, process_name)
-    :proc_lib.init_ack({:ok, self})
+    reregister(process_name, mocker_pid, process_pid)
+    :proc_lib.init_ack({:ok, mocker_pid})
 
     loop(%{
       process_name: process_name,
@@ -90,5 +105,17 @@ defmodule Nuntiux.Mocker do
   defp maybe_passthrough(true = _passthrough?, process_pid, message) do
     # We pass messages through.
     send(process_pid, message)
+  end
+
+  @spec reregister(process_name, target_pid, source_pid) :: ok
+        when process_name: Nuntiux.process_name(),
+             target_pid: pid(),
+             source_pid: pid() | nil,
+             ok: :ok
+  defp reregister(process_name, target_pid, source_pid \\ nil) do
+    Process.unregister(process_name)
+    Process.register(target_pid, process_name)
+    if is_pid(source_pid), do: Process.put(@mocked_process_key, source_pid)
+    :ok
   end
 end
