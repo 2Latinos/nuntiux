@@ -2,6 +2,8 @@ defmodule Nuntiux.Supervisor do
   @moduledoc false
   use DynamicSupervisor
 
+  require Nuntiux
+
   @supervisor __MODULE__
 
   @impl DynamicSupervisor
@@ -47,18 +49,16 @@ defmodule Nuntiux.Supervisor do
              ok: :ok,
              error: {:error, :not_mocked}
   def stop_mock(process_name) do
-    if process_name in mocked() do
+    Nuntiux.if_mocked(process_name, fn process_name ->
       mocker_pid = Process.whereis(process_name)
       Nuntiux.Mocker.delete(process_name)
       DynamicSupervisor.terminate_child(@supervisor, mocker_pid)
-    else
-      {:error, :not_mocked}
-    end
+    end)
   end
 
   @spec mocked() :: process_names
         when process_names: [Nuntiux.process_name()]
-  defp mocked do
+  def mocked do
     type = :worker
     item = :registered_name
     item_list = [item]

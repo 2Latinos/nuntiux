@@ -9,6 +9,17 @@ defmodule Nuntiux do
 
   @type process_name :: atom()
 
+  defmacro if_mocked(process_name, fun) do
+    quote bind_quoted: [
+            process_name: process_name,
+            fun: fun
+          ] do
+      if process_name in mocked(),
+        do: fun.(process_name),
+        else: {:error, :not_mocked}
+    end
+  end
+
   @doc """
   Returns the application identifier.
   """
@@ -59,5 +70,32 @@ defmodule Nuntiux do
              passthrough?: boolean()
   def passthrough?(opts) do
     opts[:passthrough?]
+  end
+
+  @doc """
+  Removes a mocking process.
+  """
+  @spec delete(process_name) :: ok | error
+        when process_name: process_name(),
+             ok: :ok,
+             error: {:error, :not_mocked}
+  defdelegate delete(process_name), to: Nuntiux.Supervisor, as: :stop_mock
+
+  @doc """
+  Returns the list of mocked processes.
+  """
+  @spec mocked() :: process_names
+        when process_names: [process_name()]
+  defdelegate mocked(), to: Nuntiux.Supervisor
+
+  @doc """
+  Returns the PID of a mocked process (the original one with that name).
+  """
+  @spec mocked_process(process_name) :: ok | error
+        when process_name: process_name(),
+             ok: {:ok, pid()},
+             error: {:error, :not_mocked}
+  def mocked_process(process_name) do
+    if_mocked(process_name, &Nuntiux.Mocker.mocked_process/1)
   end
 end
