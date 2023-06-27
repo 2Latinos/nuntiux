@@ -5,9 +5,8 @@ defmodule Nuntiux do
 
   @application :nuntiux
 
-  @opaque opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
-  @opaque event :: %{timestamp: integer(), message: term()}
-
+  @type opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
+  @type event :: %{timestamp: integer(), message: term()}
   @type process_name :: atom()
 
   defmacro if_mocked(process_name, fun) do
