@@ -6,6 +6,7 @@ defmodule Nuntiux do
   @application :nuntiux
 
   @opaque opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
+  @opaque event :: %{timestamp: integer(), message: term()}
 
   @type process_name :: atom()
 
@@ -73,6 +74,16 @@ defmodule Nuntiux do
   end
 
   @doc """
+  Signals if option `history?` is enabled or not.
+  """
+  @spec history?(opts) :: history?
+        when opts: opts(),
+             history?: boolean()
+  def history?(opts) do
+    opts[:history?]
+  end
+
+  @doc """
   Removes a mocking process.
   """
   @spec delete(process_name) :: ok | error
@@ -97,5 +108,37 @@ defmodule Nuntiux do
              error: {:error, :not_mocked}
   def mocked_process(process_name) do
     if_mocked(process_name, &Nuntiux.Mocker.mocked_process/1)
+  end
+
+  @doc """
+  Returns the history of messages received by a mocked process.
+  """
+  @spec history(process_name) :: ok | error
+        when process_name: process_name(),
+             ok: [event()],
+             error: {:error, :not_mocked}
+  def history(process_name) do
+    if_mocked(process_name, &Nuntiux.Mocker.history/1)
+  end
+
+  @doc """
+  Erases the history for a mocked process.
+  """
+  @spec reset_history(process_name) :: ok | error
+        when process_name: process_name(),
+             ok: :ok,
+             error: {:error, :not_mocked}
+  def reset_history(process_name) do
+    if_mocked(process_name, &Nuntiux.Mocker.reset_history/1)
+  end
+
+  @doc """
+  """
+  @spec new_event(timestamp, message) :: event
+        when timestamp: integer(),
+             message: term(),
+             event: event
+  def new_event(timestamp, message) do
+    %{timestamp: timestamp, message: message}
   end
 end
