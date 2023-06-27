@@ -71,6 +71,7 @@ defmodule Nuntiux.Mocker do
              ok: :ok
   def reset_history(process_name) do
     send(process_name, {:"$nuntiux.cast", :reset_history})
+    :ok
   end
 
   @doc false

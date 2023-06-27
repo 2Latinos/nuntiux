@@ -111,6 +111,55 @@ defmodule NuntiuxTest do
       :ok = Nuntiux.delete(plus_oner_name)
       [^echoer_name] = Nuntiux.mocked()
     end
+
+    test "history is available for mocked processes", %{plus_oner_name: plus_oner_name} do
+      # If a process is not mocked, Nuntiux returns an error
+      {:error, :not_mocked} = Nuntiux.history(plus_oner_name)
+      # We mock it
+      :ok = Nuntiux.new(plus_oner_name)
+      # Originally the history is empty
+      [] = Nuntiux.history(plus_oner_name)
+      # We send a message to it
+      2 = send2(plus_oner_name, 1)
+      # The message appears in the history
+      [%{timestamp: t1, message: {caller, ref, 1}}] = Nuntiux.history(plus_oner_name)
+      # We send another message
+      3 = send2(plus_oner_name, 2)
+      # The message appears in the history
+      [
+        %{timestamp: ^t1, message: {^caller, ^ref, 1}},
+        %{timestamp: t2, message: {_caller, _ref, 2}}
+      ] =
+        plus_oner_name
+        |> Nuntiux.history()
+        |> Enum.sort()
+
+      true = t1 < t2
+      # If we reset the history, it's now empty again
+      :ok = Nuntiux.reset_history(plus_oner_name)
+      [] = Nuntiux.history(plus_oner_name)
+      # We send yet another message
+      4 = send2(plus_oner_name, 3)
+      [%{timestamp: t3, message: {_caller, _ref, 3}}] = Nuntiux.history(plus_oner_name)
+      true = t2 < t3
+    end
+
+    test "history is not available under certain conditions", %{plus_oner_name: plus_oner_name} do
+      :ok = Nuntiux.new(plus_oner_name, history?: false)
+      # Originally the history is empty
+      [] = Nuntiux.history(plus_oner_name)
+      # We send a message to it
+      2 = send2(plus_oner_name, 1)
+      # The history is still empty
+      [] = Nuntiux.history(plus_oner_name)
+      # Resetting the history has no effect
+      :ok = Nuntiux.reset_history(plus_oner_name)
+      [] = Nuntiux.history(plus_oner_name)
+      # We send another message to it
+      3 = send2(plus_oner_name, 2)
+      # The history is still empty
+      [] = Nuntiux.history(plus_oner_name)
+    end
   end
 
   defp send2(dest, msg) do
