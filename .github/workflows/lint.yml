@@ -15,7 +15,7 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v11
         with:
           globs: |
-            .github/ISSUE_TEMPLATE/*.md
+            .github/**/*.md
             *.md
 
       - name: yamllint
