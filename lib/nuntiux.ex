@@ -130,14 +130,4 @@ defmodule Nuntiux do
   def reset_history(process_name) do
     if_mocked(process_name, &Nuntiux.Mocker.reset_history/1)
   end
-
-  @doc """
-  """
-  @spec new_event(timestamp, message) :: event
-        when timestamp: integer(),
-             message: term(),
-             event: event
-  def new_event(timestamp, message) do
-    %{timestamp: timestamp, message: message}
-  end
 end
