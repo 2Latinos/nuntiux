@@ -93,7 +93,7 @@ defmodule Nuntiux do
   """
   @spec mocked_process(process_name) :: ok | error
         when process_name: process_name(),
-             ok: {:ok, pid()},
+             ok: pid(),
              error: {:error, :not_mocked}
   def mocked_process(process_name) do
     if_mocked(process_name, &Nuntiux.Mocker.mocked_process/1)
