@@ -63,7 +63,7 @@ defmodule Nuntiux do
   end
 
   @doc """
-  Signals if option `passthrough` is enabled or not.
+  Signals if option `passthrough?` is enabled or not.
   """
   @spec passthrough?(opts) :: passthrough?
         when opts: opts(),
