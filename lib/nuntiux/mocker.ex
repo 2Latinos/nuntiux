@@ -3,8 +3,10 @@ defmodule Nuntiux.Mocker do
   A process that mocks another one.
   """
 
-  @type history :: [Nuntiux.event()]
+  @type history :: [event()]
   @type received? :: boolean()
+  @type event :: %{timestamp: integer(), message: term()}
+
   @typep state :: %{
            process_name: Nuntiux.process_name(),
            process_pid: pid(),
