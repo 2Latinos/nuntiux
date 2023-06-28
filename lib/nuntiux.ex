@@ -5,9 +5,9 @@ defmodule Nuntiux do
 
   @application :nuntiux
 
-  @type opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
   @type process_name :: atom()
 
+  @type opts :: Nuntiux.Mocker.opts()
   @type history :: Nuntiux.Mocker.history()
   @type received? :: Nuntiux.Mocker.received?()
   @type event :: Nuntiux.Mocker.event()
@@ -23,9 +23,7 @@ defmodule Nuntiux do
     end
   end
 
-  @doc """
-  Returns the application identifier.
-  """
+  @doc false
   @spec application() :: application
         when application: unquote(@application)
   def application do
@@ -63,26 +61,6 @@ defmodule Nuntiux do
     default_opts = [{:passthrough?, true}, {:history?, true}]
     opts = Keyword.merge(default_opts, opts)
     Nuntiux.Supervisor.start_mock(process_name, opts)
-  end
-
-  @doc """
-  Signals if option `passthrough?` is enabled or not.
-  """
-  @spec passthrough?(opts) :: passthrough?
-        when opts: opts(),
-             passthrough?: boolean()
-  def passthrough?(opts) do
-    opts[:passthrough?]
-  end
-
-  @doc """
-  Signals if option `history?` is enabled or not.
-  """
-  @spec history?(opts) :: history?
-        when opts: opts(),
-             history?: boolean()
-  def history?(opts) do
-    opts[:history?]
   end
 
   @doc """
