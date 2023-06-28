@@ -130,7 +130,7 @@ defmodule Nuntiux do
              ok: Nuntiux.Mocker.received?(),
              error: {:error, :not_mocked}
   def received?(process_name, message) do
-    if_mocked(process_name, fn process_name -> Nuntiux.Mocker.received?(process_name, message) end)
+    if_mocked(process_name, &Nuntiux.Mocker.received?(&1, message))
   end
 
   @doc """

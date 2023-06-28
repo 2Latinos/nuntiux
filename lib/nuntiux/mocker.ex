@@ -151,13 +151,8 @@ defmodule Nuntiux.Mocker do
     history = state.history
 
     case request do
-      :history ->
-        Enum.reverse(history)
-
-      {:received?, message0} ->
-        Enum.any?(history, fn %{message: message} ->
-          message == message0
-        end)
+      :history -> Enum.reverse(history)
+      {:received?, message} -> Enum.any?(history, &(&1.message == message))
     end
   end
 
