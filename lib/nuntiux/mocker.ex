@@ -42,6 +42,8 @@ defmodule Nuntiux.Mocker do
     opts: @default_opts,
     expects: @default_expects
   }
+  @label_call :"$nuntiux.call"
+  @label_cast :"$nuntiux.cast"
 
   @doc false
   @spec start_link(process_name, opts) :: ok | ignore
@@ -174,8 +176,7 @@ defmodule Nuntiux.Mocker do
              request: request_call(),
              result_call: result_call()
   defp call(process_name, request) do
-    label = :"$nuntiux.call"
-    {:ok, result} = :gen.call(process_name, label, request)
+    {:ok, result} = :gen.call(process_name, @label_call, request)
     result
   end
 
@@ -184,8 +185,7 @@ defmodule Nuntiux.Mocker do
              request: request_cast(),
              ok: :ok
   defp cast(process_name, request) do
-    label = :"$nuntiux.cast"
-    send(process_name, {label, request})
+    send(process_name, {@label_cast, request})
     :ok
   end
 
@@ -201,12 +201,12 @@ defmodule Nuntiux.Mocker do
         {:DOWN, ^process_monitor, :process, ^process_pid, reason} ->
           exit(reason)
 
-        {:"$nuntiux.call", from, request} ->
+        {@label_call, from, request} ->
           handled_call = handle_call(request, state)
           :gen.reply(from, handled_call)
           state
 
-        {:"$nuntiux.cast", request} ->
+        {@label_cast, request} ->
           handle_cast(request, state)
 
         message ->
