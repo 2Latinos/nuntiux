@@ -6,8 +6,11 @@ defmodule Nuntiux do
   @application :nuntiux
 
   @type opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
-  @type event :: %{timestamp: integer(), message: term()}
   @type process_name :: atom()
+
+  @type history :: Nuntiux.Mocker.history()
+  @type received? :: Nuntiux.Mocker.received?()
+  @type event :: Nuntiux.Mocker.event()
 
   defmacro if_mocked(process_name, fun) do
     quote bind_quoted: [
