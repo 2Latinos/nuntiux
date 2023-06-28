@@ -3,6 +3,8 @@ defmodule Nuntiux.Mocker do
   A process that mocks another one.
   """
 
+  @type history :: [Nuntiux.event()]
+  @type received? :: boolean()
   @typep state :: %{
            process_name: Nuntiux.process_name(),
            process_pid: pid(),
@@ -57,12 +59,24 @@ defmodule Nuntiux.Mocker do
   @doc false
   @spec history(process_name) :: ok
         when process_name: Nuntiux.process_name(),
-             ok: [Nuntiux.event()]
+             ok: history()
   def history(process_name) do
     label = :"$nuntiux.call"
     request = :history
     {:ok, history} = :gen.call(process_name, label, request)
     history
+  end
+
+  @doc false
+  @spec received?(process_name, message) :: ok
+        when process_name: Nuntiux.process_name(),
+             message: term(),
+             ok: boolean()
+  def received?(process_name, message) do
+    label = :"$nuntius_call"
+    request = {:received?, message}
+    {:ok, result} = :gen.call(process_name, label, request)
+    result
   end
 
   @doc false
@@ -101,15 +115,14 @@ defmodule Nuntiux.Mocker do
   defp loop(state) do
     process_monitor = state.process_monitor
     process_pid = state.process_pid
-    history = state.history
 
     next_state =
       receive do
         {:DOWN, ^process_monitor, :process, ^process_pid, reason} ->
           exit(reason)
 
-        {:"$nuntiux.call", from, :history} ->
-          :gen.reply(from, Enum.reverse(history))
+        {:"$nuntiux.call", from, call} ->
+          :gen.reply(from, handle_call(call, state))
           state
 
         {:"$nuntiux.cast", :reset_history} ->
@@ -120,6 +133,24 @@ defmodule Nuntiux.Mocker do
       end
 
     loop(next_state)
+  end
+
+  @spec handle_call(call, state) :: ok
+        when call: :history | {:received?, message},
+             message: term(),
+             ok: history() | received?()
+  def handle_call(call, state) do
+    history = state.history
+
+    case call do
+      :history ->
+        Enum.reverse(history)
+
+      {:received?, message0} ->
+        Enum.any?(history, fn %{message: message} ->
+          message == message0
+        end)
+    end
   end
 
   @spec handle_message(message, state) :: state

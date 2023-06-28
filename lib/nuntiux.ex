@@ -114,10 +114,23 @@ defmodule Nuntiux do
   """
   @spec history(process_name) :: ok | error
         when process_name: process_name(),
-             ok: [event()],
+             ok: Nuntiux.Mocker.history(),
              error: {:error, :not_mocked}
   def history(process_name) do
     if_mocked(process_name, &Nuntiux.Mocker.history/1)
+  end
+
+  @doc """
+  Returns whether a particular message was received already.
+  **Note**: it only works with `history?: true`.
+  """
+  @spec received?(process_name, message) :: ok | error
+        when process_name: process_name(),
+             message: term(),
+             ok: Nuntiux.Mocker.received?(),
+             error: {:error, :not_mocked}
+  def received?(process_name, message) do
+    if_mocked(process_name, fn process_name -> Nuntiux.Mocker.received?(process_name, message) end)
   end
 
   @doc """
