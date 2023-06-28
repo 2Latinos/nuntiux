@@ -14,7 +14,6 @@ defmodule Nuntiux.Mocker do
 
   @typep state :: %{
            process_name: Nuntiux.process_name(),
-           process_pid: pid(),
            process_monitor: reference(),
            history: history(),
            opts: opts(),
@@ -44,6 +43,8 @@ defmodule Nuntiux.Mocker do
   }
   @label_call :"$nuntiux.call"
   @label_cast :"$nuntiux.cast"
+  @label_process_pid :"$nuntiux.process_pid"
+  @label_current_message :"$nuntiux.current_message"
 
   @doc false
   @spec start_link(process_name, opts) :: ok | ignore
@@ -119,6 +120,31 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
+  @spec passthrough() :: ok
+        when ok: :ok
+  def passthrough do
+    message = current_message()
+    passthrough(message)
+  end
+
+  @doc false
+  @spec passthrough(message) :: ok
+        when message: term(),
+             ok: :ok
+  def passthrough(message) do
+    process_pid = process_pid()
+    send(process_pid, message)
+    :ok
+  end
+
+  @doc false
+  @spec mocked_process() :: pid
+        when pid: pid()
+  def mocked_process do
+    process_pid()
+  end
+
+  @doc false
   @spec history(process_name) :: history
         when process_name: Nuntiux.process_name(),
              history: history()
@@ -163,11 +189,11 @@ defmodule Nuntiux.Mocker do
     state =
       Map.merge(@default_state, %{
         process_name: process_name,
-        process_pid: process_pid,
         process_monitor: process_monitor,
         opts: opts
       })
 
+    process_pid(process_pid)
     loop(state)
   end
 
@@ -194,7 +220,7 @@ defmodule Nuntiux.Mocker do
              no_return: no_return()
   defp loop(state) do
     process_monitor = state.process_monitor
-    process_pid = state.process_pid
+    process_pid = process_pid()
 
     next_state =
       receive do
@@ -264,8 +290,9 @@ defmodule Nuntiux.Mocker do
              state: state(),
              updated_state: state()
   defp handle_message(message, state) do
-    expects_ran = maybe_run_expects(message, state.expects)
-    expects_ran or maybe_passthrough(message, state)
+    current_message(message)
+    expects_ran? = maybe_run_expects(message, state.expects)
+    expects_ran? or maybe_passthrough(message, state)
     maybe_add_event(message, state)
   end
 
@@ -332,5 +359,33 @@ defmodule Nuntiux.Mocker do
     else
       state
     end
+  end
+
+  @spec process_pid(process_pid) :: ok
+        when process_pid: pid(),
+             ok: :ok
+  defp process_pid(process_pid) do
+    nil = Process.put(@label_process_pid, process_pid)
+    :ok
+  end
+
+  @spec process_pid() :: pid
+        when pid: pid()
+  defp process_pid do
+    Process.get(@label_process_pid)
+  end
+
+  @spec current_message(message) :: ok
+        when message: term(),
+             ok: :ok
+  defp current_message(message) do
+    _previous_message = Process.put(@label_current_message, message)
+    :ok
+  end
+
+  @spec current_message() :: message
+        when message: term()
+  defp current_message do
+    Process.get(@label_current_message)
   end
 end

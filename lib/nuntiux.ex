@@ -110,6 +110,31 @@ defmodule Nuntiux do
   end
 
   @doc """
+  Passes the current message down to the mocked process.
+  **Note**: this code should only be used inside an expect fun.
+  """
+  @spec passthrough() :: ok
+        when ok: :ok
+  defdelegate passthrough(), to: Nuntiux.Mocker
+
+  @doc """
+  Passes a message down to the mocked process.
+  **Note**: this code should only be used inside an expect fun.
+  """
+  @spec passthrough(message) :: ok
+        when message: term(),
+             ok: :ok
+  defdelegate passthrough(message), to: Nuntiux.Mocker
+
+  @doc """
+  Returns the PID of the currently mocked process.
+  **Note**: this code should only be used inside an expect fun.
+  """
+  @spec mocked_process() :: pid
+        when pid: pid()
+  defdelegate mocked_process(), to: Nuntiux.Mocker
+
+  @doc """
   Returns the history of messages received by a mocked process.
   """
   @spec history(process_name) :: history | error
