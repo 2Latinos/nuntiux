@@ -7,19 +7,20 @@ defmodule NuntiuxTest do
 
     plus_oner_pid = spawn(&plus_oner/0)
     plus_oner_name = :plus_oner
+    safe_unregister(plus_oner_name)
     Process.register(plus_oner_pid, plus_oner_name)
 
     echoer_pid = spawn(&echoer/0)
     echoer_name = :echoer
+    safe_unregister(echoer_name)
     Process.register(echoer_pid, echoer_name)
 
     on_exit(:kill_plus_oner_and_echoer, fn ->
       reason = :kill
-
-      Process.unregister(plus_oner_name)
+      safe_unregister(plus_oner_name)
       Process.exit(plus_oner_pid, reason)
 
-      Process.unregister(echoer_name)
+      safe_unregister(echoer_name)
       Process.exit(echoer_pid, reason)
 
       # Give it time to process the exit
@@ -118,33 +119,41 @@ defmodule NuntiuxTest do
       # If a process is not mocked, Nuntiux returns an error
       {:error, :not_mocked} = Nuntiux.history(plus_oner_name)
       {:error, :not_mocked} = Nuntiux.received?(plus_oner_name, :any_message)
+
       # We mock it
       :ok = Nuntiux.new(plus_oner_name)
+
       # Originally the history is empty
       [] = Nuntiux.history(plus_oner_name)
       false = Nuntiux.received?(plus_oner_name, 1)
+
       # We send a message to it
       2 = send2(plus_oner_name, 1)
+
       # The message appears in the history
       [%{timestamp: t1, message: m1}] = Nuntiux.history(plus_oner_name)
       true = Nuntiux.received?(plus_oner_name, m1)
       false = Nuntiux.received?(plus_oner_name, 2)
+
       # We send another message
       3 = send2(plus_oner_name, 2)
+
       # The message appears in the history
       [%{timestamp: ^t1, message: ^m1}, %{timestamp: t2, message: m2}] =
         plus_oner_name
         |> Nuntiux.history()
-        |> Enum.sort()
+        |> Enum.sort(&(&1.timestamp <= &2.timestamp))
 
       true = t1 < t2
       true = Nuntiux.received?(plus_oner_name, m1)
       true = Nuntiux.received?(plus_oner_name, m2)
+
       # If we reset the history, it's now empty again
       :ok = Nuntiux.reset_history(plus_oner_name)
       [] = Nuntiux.history(plus_oner_name)
       false = Nuntiux.received?(plus_oner_name, m1)
       false = Nuntiux.received?(plus_oner_name, m2)
+
       # We send yet another message
       4 = send2(plus_oner_name, 3)
       [%{timestamp: t3, message: m3}] = Nuntiux.history(plus_oner_name)
@@ -156,20 +165,26 @@ defmodule NuntiuxTest do
 
     test "history is not available under certain conditions", %{plus_oner_name: plus_oner_name} do
       :ok = Nuntiux.new(plus_oner_name, history?: false)
+
       # Originally the history is empty
       [] = Nuntiux.history(plus_oner_name)
       false = Nuntiux.received?(plus_oner_name, 1)
+
       # We send a message to it
       2 = send2(plus_oner_name, 1)
+
       # The history is still empty
       [] = Nuntiux.history(plus_oner_name)
       false = Nuntiux.received?(plus_oner_name, 1)
+
       # Resetting the history has no effect
       :ok = Nuntiux.reset_history(plus_oner_name)
       [] = Nuntiux.history(plus_oner_name)
       false = Nuntiux.received?(plus_oner_name, 1)
+
       # We send another message to it
       3 = send2(plus_oner_name, 2)
+
       # The history is still empty
       [] = Nuntiux.history(plus_oner_name)
       false = Nuntiux.received?(plus_oner_name, 1)
@@ -212,5 +227,11 @@ defmodule NuntiuxTest do
     end
 
     echoer()
+  end
+
+  defp safe_unregister(name) do
+    Process.unregister(name)
+  rescue
+    _error -> :ok
   end
 end
