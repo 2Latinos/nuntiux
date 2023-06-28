@@ -7,6 +7,7 @@ defmodule Nuntiux.Mocker do
            process_name: Nuntiux.process_name(),
            process_pid: pid(),
            process_monitor: reference(),
+           history: [Nuntiux.event()],
            opts: Nuntiux.opts()
          }
 
@@ -54,6 +55,26 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
+  @spec history(process_name) :: ok
+        when process_name: Nuntiux.process_name(),
+             ok: [Nuntiux.event()]
+  def history(process_name) do
+    label = :"$nuntiux.call"
+    request = :history
+    {:ok, history} = :gen.call(process_name, label, request)
+    history
+  end
+
+  @doc false
+  @spec reset_history(process_name) :: ok
+        when process_name: Nuntiux.process_name(),
+             ok: :ok
+  def reset_history(process_name) do
+    send(process_name, {:"$nuntiux.cast", :reset_history})
+    :ok
+  end
+
+  @doc false
   @spec init(process_name, process_pid, opts) :: no_return
         when process_name: Nuntiux.process_name(),
              process_pid: pid(),
@@ -69,6 +90,7 @@ defmodule Nuntiux.Mocker do
       process_name: process_name,
       process_pid: process_pid,
       process_monitor: process_monitor,
+      history: [],
       opts: opts
     })
   end
@@ -79,32 +101,33 @@ defmodule Nuntiux.Mocker do
   defp loop(state) do
     process_monitor = state.process_monitor
     process_pid = state.process_pid
-    passthrough? = Nuntiux.passthrough?(state.opts)
+    history = state.history
 
-    receive do
-      {:DOWN, ^process_monitor, :process, ^process_pid, reason} ->
-        exit(reason)
+    next_state =
+      receive do
+        {:DOWN, ^process_monitor, :process, ^process_pid, reason} ->
+          exit(reason)
 
-      message ->
-        maybe_passthrough(passthrough?, process_pid, message)
-    end
+        {:"$nuntiux.call", from, :history} ->
+          :gen.reply(from, Enum.reverse(history))
+          state
 
-    loop(state)
+        {:"$nuntiux.cast", :reset_history} ->
+          %{state | history: []}
+
+        message ->
+          handle_message(message, state)
+      end
+
+    loop(next_state)
   end
 
-  @spec maybe_passthrough(passthrough?, process_pid, message) :: message | ignore
-        when passthrough?: boolean(),
-             process_pid: pid(),
-             message: any(),
-             ignore: :ignore
-  defp maybe_passthrough(false = _passthrough?, _process_pid, _message) do
-    # We don't pass messages through, we just ignore them.
-    :ignore
-  end
-
-  defp maybe_passthrough(true = _passthrough?, process_pid, message) do
-    # We pass messages through.
-    send(process_pid, message)
+  @spec handle_message(message, state) :: state
+        when message: term(),
+             state: state()
+  defp handle_message(message, state) do
+    maybe_passthrough(message, state)
+    maybe_add_event(message, state)
   end
 
   @spec reregister(process_name, target_pid, source_pid) :: ok
@@ -117,5 +140,40 @@ defmodule Nuntiux.Mocker do
     Process.register(target_pid, process_name)
     if is_pid(source_pid), do: Process.put(@mocked_process_key, source_pid)
     :ok
+  end
+
+  @spec maybe_passthrough(message, state) :: message | ignore
+        when message: term(),
+             state: state(),
+             ignore: :ignore
+  defp maybe_passthrough(message, state) do
+    opts = state.opts
+    process_pid = state.process_pid
+
+    if Nuntiux.passthrough?(opts),
+      do: send(process_pid, message),
+      else: :ignore
+
+    # We don't pass messages through, we just ignore them.
+    :ignore
+  end
+
+  @spec maybe_add_event(message, state) :: state
+        when message: term(),
+             state: state()
+  defp maybe_add_event(message, state) do
+    opts = state.opts
+
+    if Nuntiux.history?(opts) do
+      {_current_value, state} =
+        Map.get_and_update(state, :history, fn history ->
+          timestamp = System.system_time()
+          {history, [%{timestamp: timestamp, message: message} | history]}
+        end)
+
+      state
+    else
+      state
+    end
   end
 end

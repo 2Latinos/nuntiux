@@ -3,7 +3,7 @@ defmodule NuntiuxTest do
   doctest Nuntiux
 
   setup do
-    Nuntiux.start()
+    {:ok, _modules} = Nuntiux.start()
 
     plus_oner_pid = spawn(&plus_oner/0)
     plus_oner_name = :plus_oner
@@ -38,16 +38,16 @@ defmodule NuntiuxTest do
     test "starts and stops" do
       application = Nuntiux.application()
 
-      Nuntiux.stop()
+      :ok = Nuntiux.stop()
 
       {:ok, apps} = Nuntiux.start()
       [^application | _other] = apps
       no_modules = []
       {:ok, ^no_modules} = Nuntiux.start()
-      Nuntiux.stop()
+      :ok = Nuntiux.stop()
 
       {:ok, [^application]} = Nuntiux.start()
-      Nuntiux.stop()
+      :ok = Nuntiux.stop()
     end
 
     test "has a practically invisible default mock", %{plus_oner_name: plus_oner_name} do
@@ -55,7 +55,7 @@ defmodule NuntiuxTest do
       2 = send2(plus_oner_name, 1)
 
       # We mock the process but we don't handle any message
-      Nuntiux.new(plus_oner_name)
+      :ok = Nuntiux.new(plus_oner_name)
 
       # So, nothing changes
       2 = send2(plus_oner_name, 1)
@@ -75,9 +75,9 @@ defmodule NuntiuxTest do
 
       # Mocking it and later deleting the mock
       # restores the registered name to the mocked process
-      Nuntiux.new(plus_oner_name)
+      :ok = Nuntiux.new(plus_oner_name)
       refute Process.whereis(plus_oner_name) == plus_oner_pid
-      Nuntiux.delete(plus_oner_name)
+      :ok = Nuntiux.delete(plus_oner_name)
       ^plus_oner_pid = Process.whereis(plus_oner_name)
 
       # And the process is, again, not mocked
@@ -96,7 +96,7 @@ defmodule NuntiuxTest do
       {:error, :not_mocked} = Nuntiux.mocked_process(plus_oner_name)
 
       # Once you mock it, you can get the original PID
-      Nuntiux.new(plus_oner_name)
+      :ok = Nuntiux.new(plus_oner_name)
       refute Process.whereis(plus_oner_name) == plus_oner_pid
 
       # And the process appears in the list of mocked processes
@@ -104,12 +104,61 @@ defmodule NuntiuxTest do
       [^plus_oner_name] = Nuntiux.mocked()
 
       # If you mock two processes, they both appear in the list
-      Nuntiux.new(echoer_name)
+      :ok = Nuntiux.new(echoer_name)
       [^echoer_name, ^plus_oner_name] = Enum.sort(Nuntiux.mocked())
 
       # If you remove a mock, it goes away from the list
-      Nuntiux.delete(plus_oner_name)
+      :ok = Nuntiux.delete(plus_oner_name)
       [^echoer_name] = Nuntiux.mocked()
+    end
+
+    test "history is available for mocked processes", %{plus_oner_name: plus_oner_name} do
+      # If a process is not mocked, Nuntiux returns an error
+      {:error, :not_mocked} = Nuntiux.history(plus_oner_name)
+      # We mock it
+      :ok = Nuntiux.new(plus_oner_name)
+      # Originally the history is empty
+      [] = Nuntiux.history(plus_oner_name)
+      # We send a message to it
+      2 = send2(plus_oner_name, 1)
+      # The message appears in the history
+      [%{timestamp: t1, message: {caller, ref, 1}}] = Nuntiux.history(plus_oner_name)
+      # We send another message
+      3 = send2(plus_oner_name, 2)
+      # The message appears in the history
+      [
+        %{timestamp: ^t1, message: {^caller, ^ref, 1}},
+        %{timestamp: t2, message: {_caller, _ref, 2}}
+      ] =
+        plus_oner_name
+        |> Nuntiux.history()
+        |> Enum.sort()
+
+      true = t1 < t2
+      # If we reset the history, it's now empty again
+      :ok = Nuntiux.reset_history(plus_oner_name)
+      [] = Nuntiux.history(plus_oner_name)
+      # We send yet another message
+      4 = send2(plus_oner_name, 3)
+      [%{timestamp: t3, message: {_caller, _ref, 3}}] = Nuntiux.history(plus_oner_name)
+      true = t2 < t3
+    end
+
+    test "history is not available under certain conditions", %{plus_oner_name: plus_oner_name} do
+      :ok = Nuntiux.new(plus_oner_name, history?: false)
+      # Originally the history is empty
+      [] = Nuntiux.history(plus_oner_name)
+      # We send a message to it
+      2 = send2(plus_oner_name, 1)
+      # The history is still empty
+      [] = Nuntiux.history(plus_oner_name)
+      # Resetting the history has no effect
+      :ok = Nuntiux.reset_history(plus_oner_name)
+      [] = Nuntiux.history(plus_oner_name)
+      # We send another message to it
+      3 = send2(plus_oner_name, 2)
+      # The history is still empty
+      [] = Nuntiux.history(plus_oner_name)
     end
   end
 

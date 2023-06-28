@@ -5,8 +5,8 @@ defmodule Nuntiux do
 
   @application :nuntiux
 
-  @opaque opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
-
+  @type opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
+  @type event :: %{timestamp: integer(), message: term()}
   @type process_name :: atom()
 
   defmacro if_mocked(process_name, fun) do
@@ -63,13 +63,23 @@ defmodule Nuntiux do
   end
 
   @doc """
-  Signals if option `passthrough` is enabled or not.
+  Signals if option `passthrough?` is enabled or not.
   """
   @spec passthrough?(opts) :: passthrough?
         when opts: opts(),
              passthrough?: boolean()
   def passthrough?(opts) do
     opts[:passthrough?]
+  end
+
+  @doc """
+  Signals if option `history?` is enabled or not.
+  """
+  @spec history?(opts) :: history?
+        when opts: opts(),
+             history?: boolean()
+  def history?(opts) do
+    opts[:history?]
   end
 
   @doc """
@@ -93,9 +103,31 @@ defmodule Nuntiux do
   """
   @spec mocked_process(process_name) :: ok | error
         when process_name: process_name(),
-             ok: {:ok, pid()},
+             ok: pid(),
              error: {:error, :not_mocked}
   def mocked_process(process_name) do
     if_mocked(process_name, &Nuntiux.Mocker.mocked_process/1)
+  end
+
+  @doc """
+  Returns the history of messages received by a mocked process.
+  """
+  @spec history(process_name) :: ok | error
+        when process_name: process_name(),
+             ok: [event()],
+             error: {:error, :not_mocked}
+  def history(process_name) do
+    if_mocked(process_name, &Nuntiux.Mocker.history/1)
+  end
+
+  @doc """
+  Erases the history for a mocked process.
+  """
+  @spec reset_history(process_name) :: ok | error
+        when process_name: process_name(),
+             ok: :ok,
+             error: {:error, :not_mocked}
+  def reset_history(process_name) do
+    if_mocked(process_name, &Nuntiux.Mocker.reset_history/1)
   end
 end
