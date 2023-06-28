@@ -190,6 +190,98 @@ defmodule NuntiuxTest do
       false = Nuntiux.received?(plus_oner_name, 1)
       false = Nuntiux.received?(plus_oner_name, 2)
     end
+
+    test "allows defining/consulting expectations", %{plus_oner_name: plus_oner_name} do
+      expects = fn -> Nuntiux.expects(plus_oner_name) end
+      :ok = Nuntiux.new(plus_oner_name)
+
+      # Add (unnamed) expectations...
+      ref1 = Nuntiux.expect(plus_oner_name, fn _in -> :ok end)
+      true = is_reference(ref1)
+      ref2 = Nuntiux.expect(plus_oner_name, fn _in -> :ok end)
+      true = is_reference(ref2)
+
+      # ... and (only known) references in expectations
+      2 = map_size(expects.())
+      [^ref2] = Map.keys(expects.()) -- [ref1]
+
+      # Now add (named) expectations...
+      :named_exp1 = Nuntiux.expect(plus_oner_name, :named_exp1, fn _in -> :ok end)
+
+      # ... and check they're there
+      3 = map_size(expects.())
+      [:named_exp1] = Map.keys(expects.()) -- [ref1, ref2]
+
+      # ... and that using the same name overwrites existing expectations
+      :named_exp1 = Nuntiux.expect(plus_oner_name, :named_exp1, fn _in -> :ok end)
+      [:named_exp1] = Map.keys(expects.()) -- [ref1, ref2]
+
+      # ... though different names don't
+      fun_named_exp2 = fn _in -> :ok end
+      :named_exp2 = Nuntiux.expect(plus_oner_name, :named_exp2, fun_named_exp2)
+      4 = map_size(expects.())
+      [:named_exp2] = Map.keys(expects.()) -- [ref1, ref2, :named_exp1]
+
+      # Let's now delete an expectation...
+      # It was here...
+      {:ok, _expects_ref1} = Map.fetch(expects.(), ref1)
+      :ok = Nuntiux.delete(plus_oner_name, ref1)
+      # ... and it's not anymore
+      :error = Map.fetch(expects.(), ref1)
+
+      # ... and another one
+      # It was here...
+      {:ok, _expects_ref2} = Map.fetch(expects.(), ref2)
+      :ok = Nuntiux.delete(plus_oner_name, ref2)
+      # ... and it's not anymore
+      :error = Map.fetch(expects.(), ref2)
+
+      # ... and another one
+      # It was here...
+      {:ok, _expects_named_exp1} = Map.fetch(expects.(), :named_exp1)
+      :ok = Nuntiux.delete(plus_oner_name, :named_exp1)
+      # ... and it's not anymore
+      :error = Map.fetch(expects.(), :named_exp1)
+
+      # named_exp2 is still there (with its function)
+      1 = map_size(expects.())
+      %{named_exp2: _fun} = expects.()
+    end
+
+    test "allows changing behaviour based on expectations", %{echoer_name: echoer_name} do
+      :ok = Nuntiux.new(echoer_name, passthrough?: false)
+      self = self()
+      boomerang = :boomerang
+      kylie = :kylie
+      # Have the expectation send a message back to us
+      _expectid1 =
+        Nuntiux.expect(echoer_name, :boom_echo, fn ^boomerang = m -> send(self, {:echoed, m}) end)
+
+      _expectid2 =
+        Nuntiux.expect(echoer_name, :kyli_echo, fn ^kylie = m -> send(self, {:echoed, m}) end)
+
+      send(echoer_name, boomerang)
+
+      receive do
+        {:echoed, ^boomerang} ->
+          :ok
+      after
+        250 ->
+          raise "timeout"
+      end
+
+      # Check if a nonmatching expectation would also work
+      send(echoer_name, :unknown)
+
+      :ok =
+        receive do
+          _something ->
+            :ignored
+        after
+          250 ->
+            :ok
+        end
+    end
   end
 
   defp send2(dest, msg) do
