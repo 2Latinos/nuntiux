@@ -49,7 +49,7 @@ defmodule Nuntiux.Supervisor do
              ok: :ok,
              error: {:error, :not_mocked}
   def stop_mock(process_name) do
-    Nuntiux.if_mocked(process_name, fn process_name ->
+    Nuntiux.if_mocked(process_name, fn ->
       mocker_pid = Process.whereis(process_name)
       Nuntiux.Mocker.delete(process_name)
       DynamicSupervisor.terminate_child(@supervisor, mocker_pid)

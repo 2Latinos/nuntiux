@@ -18,7 +18,7 @@ defmodule Nuntiux do
             fun: fun
           ] do
       if process_name in mocked(),
-        do: fun.(process_name),
+        do: fun.(),
         else: {:error, :not_mocked}
     end
   end
@@ -87,7 +87,7 @@ defmodule Nuntiux do
              ok: pid(),
              error: {:error, :not_mocked}
   def mocked_process(process_name) do
-    if_mocked(process_name, &Nuntiux.Mocker.mocked_process/1)
+    if_mocked(process_name, fn -> Nuntiux.Mocker.mocked_process(process_name) end)
   end
 
   @doc """
@@ -98,7 +98,7 @@ defmodule Nuntiux do
              ok: Nuntiux.Mocker.history(),
              error: {:error, :not_mocked}
   def history(process_name) do
-    if_mocked(process_name, &Nuntiux.Mocker.history/1)
+    if_mocked(process_name, fn -> Nuntiux.Mocker.history(process_name) end)
   end
 
   @doc """
@@ -111,7 +111,7 @@ defmodule Nuntiux do
              ok: Nuntiux.Mocker.received?(),
              error: {:error, :not_mocked}
   def received?(process_name, message) do
-    if_mocked(process_name, &Nuntiux.Mocker.received?(&1, message))
+    if_mocked(process_name, fn -> Nuntiux.Mocker.received?(process_name, message) end)
   end
 
   @doc """
@@ -122,6 +122,6 @@ defmodule Nuntiux do
              ok: :ok,
              error: {:error, :not_mocked}
   def reset_history(process_name) do
-    if_mocked(process_name, &Nuntiux.Mocker.reset_history/1)
+    if_mocked(process_name, fn -> Nuntiux.Mocker.reset_history(process_name) end)
   end
 end
