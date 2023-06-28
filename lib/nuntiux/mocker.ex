@@ -305,21 +305,13 @@ defmodule Nuntiux.Mocker do
     )
   end
 
-  @spec maybe_passthrough(message, state) :: ok | ignore
+  @spec maybe_passthrough(message, state) :: ok
         when message: term(),
              state: state(),
-             ok: :ok,
-             ignore: :ignore
+             ok: :ok
   defp maybe_passthrough(message, state) do
-    opts = state.opts
-    process_pid = state.process_pid
-
-    if passthrough?(opts),
-      do: send(process_pid, message),
-      else: :ignore
-
-    # We don't pass messages through, we just ignore them.
-    :ignore
+    passthrough?(state.opts) and passthrough(message)
+    :ok
   end
 
   @spec maybe_add_event(message, state) :: updated_state
