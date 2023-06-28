@@ -12,6 +12,7 @@ defmodule Nuntiux.Mocker do
            history: [Nuntiux.event()],
            opts: Nuntiux.opts()
          }
+  @typep request :: :history | {:received?, message :: term()}
 
   @mocked_process_key :"#{__MODULE__}.mocked_process"
 
@@ -61,22 +62,18 @@ defmodule Nuntiux.Mocker do
         when process_name: Nuntiux.process_name(),
              ok: history()
   def history(process_name) do
-    label = :"$nuntiux.call"
     request = :history
-    {:ok, history} = :gen.call(process_name, label, request)
-    history
+    call(process_name, request)
   end
 
   @doc false
   @spec received?(process_name, message) :: ok
         when process_name: Nuntiux.process_name(),
              message: term(),
-             ok: boolean()
+             ok: received?()
   def received?(process_name, message) do
-    label = :"$nuntius_call"
     request = {:received?, message}
-    {:ok, result} = :gen.call(process_name, label, request)
-    result
+    call(process_name, request)
   end
 
   @doc false
@@ -84,7 +81,9 @@ defmodule Nuntiux.Mocker do
         when process_name: Nuntiux.process_name(),
              ok: :ok
   def reset_history(process_name) do
-    send(process_name, {:"$nuntiux.cast", :reset_history})
+    label = :"$nuntiux.cast"
+    request = :reset_history
+    send(process_name, {label, request})
     :ok
   end
 
@@ -109,6 +108,16 @@ defmodule Nuntiux.Mocker do
     })
   end
 
+  @spec call(process_name, request) :: ok
+        when process_name: Nuntiux.process_name(),
+             request: request(),
+             ok: history() | received?()
+  defp call(process_name, request) do
+    label = :"$nuntiux.call"
+    {:ok, result} = :gen.call(process_name, label, request)
+    result
+  end
+
   @spec loop(state) :: no_return
         when state: state(),
              no_return: no_return()
@@ -121,8 +130,8 @@ defmodule Nuntiux.Mocker do
         {:DOWN, ^process_monitor, :process, ^process_pid, reason} ->
           exit(reason)
 
-        {:"$nuntiux.call", from, call} ->
-          :gen.reply(from, handle_call(call, state))
+        {:"$nuntiux.call", from, request} ->
+          :gen.reply(from, handle_call(request, state))
           state
 
         {:"$nuntiux.cast", :reset_history} ->
@@ -135,14 +144,13 @@ defmodule Nuntiux.Mocker do
     loop(next_state)
   end
 
-  @spec handle_call(call, state) :: ok
-        when call: :history | {:received?, message},
-             message: term(),
+  @spec handle_call(request, state) :: ok
+        when request: request(),
              ok: history() | received?()
-  def handle_call(call, state) do
+  def handle_call(request, state) do
     history = state.history
 
-    case call do
+    case request do
       :history ->
         Enum.reverse(history)
 
