@@ -150,7 +150,7 @@ defmodule Nuntiux.Mocker do
   @spec handle_call(request, state) :: ok
         when request: request(),
              ok: history() | received?()
-  def handle_call(request, state) do
+  defp handle_call(request, state) do
     history = state.history
 
     case request do
@@ -159,23 +159,19 @@ defmodule Nuntiux.Mocker do
     end
   end
 
-  @doc """
-  Signals if option `passthrough?` is enabled or not.
-  """
+  @doc false
   @spec passthrough?(opts) :: passthrough?
         when opts: opts(),
              passthrough?: boolean()
-  def passthrough?(opts) do
+  defp passthrough?(opts) do
     opts[:passthrough?]
   end
 
-  @doc """
-  Signals if option `history?` is enabled or not.
-  """
+  @doc false
   @spec history?(opts) :: history?
         when opts: opts(),
              history?: boolean()
-  def history?(opts) do
+  defp history?(opts) do
     opts[:history?]
   end
 
