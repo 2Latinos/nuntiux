@@ -5,9 +5,12 @@ defmodule Nuntiux do
 
   @application :nuntiux
 
-  @type opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
-  @type event :: %{timestamp: integer(), message: term()}
   @type process_name :: atom()
+
+  @type opts :: Nuntiux.Mocker.opts()
+  @type history :: Nuntiux.Mocker.history()
+  @type received? :: Nuntiux.Mocker.received?()
+  @type event :: Nuntiux.Mocker.event()
 
   defmacro if_mocked(process_name, fun) do
     quote bind_quoted: [
@@ -20,9 +23,7 @@ defmodule Nuntiux do
     end
   end
 
-  @doc """
-  Returns the application identifier.
-  """
+  @doc false
   @spec application() :: application
         when application: unquote(@application)
   def application do
@@ -63,26 +64,6 @@ defmodule Nuntiux do
   end
 
   @doc """
-  Signals if option `passthrough?` is enabled or not.
-  """
-  @spec passthrough?(opts) :: passthrough?
-        when opts: opts(),
-             passthrough?: boolean()
-  def passthrough?(opts) do
-    opts[:passthrough?]
-  end
-
-  @doc """
-  Signals if option `history?` is enabled or not.
-  """
-  @spec history?(opts) :: history?
-        when opts: opts(),
-             history?: boolean()
-  def history?(opts) do
-    opts[:history?]
-  end
-
-  @doc """
   Removes a mocking process.
   """
   @spec delete(process_name) :: ok | error
@@ -114,10 +95,23 @@ defmodule Nuntiux do
   """
   @spec history(process_name) :: ok | error
         when process_name: process_name(),
-             ok: [event()],
+             ok: Nuntiux.Mocker.history(),
              error: {:error, :not_mocked}
   def history(process_name) do
     if_mocked(process_name, &Nuntiux.Mocker.history/1)
+  end
+
+  @doc """
+  Returns whether a particular message was received already.
+  **Note**: it only works with `history?: true`.
+  """
+  @spec received?(process_name, message) :: ok | error
+        when process_name: process_name(),
+             message: term(),
+             ok: Nuntiux.Mocker.received?(),
+             error: {:error, :not_mocked}
+  def received?(process_name, message) do
+    if_mocked(process_name, &Nuntiux.Mocker.received?(&1, message))
   end
 
   @doc """

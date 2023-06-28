@@ -3,20 +3,26 @@ defmodule Nuntiux.Mocker do
   A process that mocks another one.
   """
 
+  @type opts :: [{:passthrough?, boolean()} | {:history?, boolean()}]
+  @type history :: [event()]
+  @type received? :: boolean()
+  @type event :: %{timestamp: integer(), message: term()}
+
   @typep state :: %{
            process_name: Nuntiux.process_name(),
            process_pid: pid(),
            process_monitor: reference(),
-           history: [Nuntiux.event()],
-           opts: Nuntiux.opts()
+           history: [event()],
+           opts: opts()
          }
+  @typep request :: :history | {:received?, message :: term()}
 
   @mocked_process_key :"#{__MODULE__}.mocked_process"
 
   @doc false
   @spec start_link(process_name, opts) :: ok | ignore
         when process_name: Nuntiux.process_name(),
-             opts: Nuntiux.opts(),
+             opts: opts(),
              ok: {:ok, pid()},
              ignore: :ignore
   def start_link(process_name, opts) do
@@ -57,12 +63,20 @@ defmodule Nuntiux.Mocker do
   @doc false
   @spec history(process_name) :: ok
         when process_name: Nuntiux.process_name(),
-             ok: [Nuntiux.event()]
+             ok: history()
   def history(process_name) do
-    label = :"$nuntiux.call"
     request = :history
-    {:ok, history} = :gen.call(process_name, label, request)
-    history
+    call(process_name, request)
+  end
+
+  @doc false
+  @spec received?(process_name, message) :: ok
+        when process_name: Nuntiux.process_name(),
+             message: term(),
+             ok: received?()
+  def received?(process_name, message) do
+    request = {:received?, message}
+    call(process_name, request)
   end
 
   @doc false
@@ -70,7 +84,9 @@ defmodule Nuntiux.Mocker do
         when process_name: Nuntiux.process_name(),
              ok: :ok
   def reset_history(process_name) do
-    send(process_name, {:"$nuntiux.cast", :reset_history})
+    label = :"$nuntiux.cast"
+    request = :reset_history
+    send(process_name, {label, request})
     :ok
   end
 
@@ -78,7 +94,7 @@ defmodule Nuntiux.Mocker do
   @spec init(process_name, process_pid, opts) :: no_return
         when process_name: Nuntiux.process_name(),
              process_pid: pid(),
-             opts: Nuntiux.opts(),
+             opts: opts(),
              no_return: no_return()
   def init(process_name, process_pid, opts) do
     mocker_pid = self()
@@ -95,21 +111,30 @@ defmodule Nuntiux.Mocker do
     })
   end
 
+  @spec call(process_name, request) :: ok
+        when process_name: Nuntiux.process_name(),
+             request: request(),
+             ok: history() | received?()
+  defp call(process_name, request) do
+    label = :"$nuntiux.call"
+    {:ok, result} = :gen.call(process_name, label, request)
+    result
+  end
+
   @spec loop(state) :: no_return
         when state: state(),
              no_return: no_return()
   defp loop(state) do
     process_monitor = state.process_monitor
     process_pid = state.process_pid
-    history = state.history
 
     next_state =
       receive do
         {:DOWN, ^process_monitor, :process, ^process_pid, reason} ->
           exit(reason)
 
-        {:"$nuntiux.call", from, :history} ->
-          :gen.reply(from, Enum.reverse(history))
+        {:"$nuntiux.call", from, request} ->
+          :gen.reply(from, handle_call(request, state))
           state
 
         {:"$nuntiux.cast", :reset_history} ->
@@ -120,6 +145,38 @@ defmodule Nuntiux.Mocker do
       end
 
     loop(next_state)
+  end
+
+  @spec handle_call(request, state) :: ok
+        when request: request(),
+             ok: history() | received?()
+  def handle_call(request, state) do
+    history = state.history
+
+    case request do
+      :history -> Enum.reverse(history)
+      {:received?, message} -> Enum.any?(history, &(&1.message == message))
+    end
+  end
+
+  @doc """
+  Signals if option `passthrough?` is enabled or not.
+  """
+  @spec passthrough?(opts) :: passthrough?
+        when opts: opts(),
+             passthrough?: boolean()
+  def passthrough?(opts) do
+    opts[:passthrough?]
+  end
+
+  @doc """
+  Signals if option `history?` is enabled or not.
+  """
+  @spec history?(opts) :: history?
+        when opts: opts(),
+             history?: boolean()
+  def history?(opts) do
+    opts[:history?]
   end
 
   @spec handle_message(message, state) :: state
@@ -150,7 +207,7 @@ defmodule Nuntiux.Mocker do
     opts = state.opts
     process_pid = state.process_pid
 
-    if Nuntiux.passthrough?(opts),
+    if passthrough?(opts),
       do: send(process_pid, message),
       else: :ignore
 
@@ -164,7 +221,7 @@ defmodule Nuntiux.Mocker do
   defp maybe_add_event(message, state) do
     opts = state.opts
 
-    if Nuntiux.history?(opts) do
+    if history?(opts) do
       {_current_value, state} =
         Map.get_and_update(state, :history, fn history ->
           timestamp = System.system_time()
