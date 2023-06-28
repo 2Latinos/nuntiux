@@ -112,9 +112,9 @@ defmodule Nuntiux do
   @doc """
   Returns the history of messages received by a mocked process.
   """
-  @spec history(process_name) :: ok | error
+  @spec history(process_name) :: history | error
         when process_name: process_name(),
-             ok: history(),
+             history: history(),
              error: {:error, :not_mocked}
   def history(process_name) do
     if_mocked(
@@ -129,10 +129,10 @@ defmodule Nuntiux do
   Returns whether a particular message was received already.
   **Note**: it only works with `history?: true`.
   """
-  @spec received?(process_name, message) :: ok | error
+  @spec received?(process_name, message) :: received? | error
         when process_name: process_name(),
              message: term(),
-             ok: received?(),
+             received?: received?(),
              error: {:error, :not_mocked}
   def received?(process_name, message) do
     if_mocked(
@@ -169,11 +169,11 @@ defmodule Nuntiux do
   If the expect function is named, when it is successfully added or replaced, it'll keep the name
   as its identifier. Otherwise, a reference is returned as an identifier.
   """
-  @spec expect(process_name, expect_name, expect_fun) :: ok | error
+  @spec expect(process_name, expect_name, expect_fun) :: expect_id | error
         when process_name: process_name(),
              expect_name: nil | expect_name(),
              expect_fun: expect_fun(),
-             ok: expect_id(),
+             expect_id: expect_id(),
              error: {:error, :not_mocked}
   def expect(process_name, expect_name \\ nil, expect_fun) do
     if_mocked(
@@ -187,9 +187,9 @@ defmodule Nuntiux do
   @doc """
   Returns the list of expect functions for a process.
   """
-  @spec expects(process_name) :: ok | error
+  @spec expects(process_name) :: expects | error
         when process_name: process_name(),
-             ok: expects(),
+             expects: expects(),
              error: {:error, :not_mocked}
   def expects(process_name) do
     if_mocked(

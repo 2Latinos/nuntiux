@@ -63,11 +63,11 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
-  @spec expect(process_name, expect_name, expect_fun) :: ok
+  @spec expect(process_name, expect_name, expect_fun) :: expect_id
         when process_name: Nuntiux.process_name(),
              expect_name: nil | expect_name(),
              expect_fun: expect_fun(),
-             ok: expect_id()
+             expect_id: expect_id()
   def expect(process_name, expect_name, expect_fun) do
     expect_id =
       if is_nil(expect_name),
@@ -80,9 +80,9 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
-  @spec expects(process_name) :: ok
+  @spec expects(process_name) :: expects
         when process_name: Nuntiux.process_name(),
-             ok: expects()
+             expects: expects()
   def expects(process_name) do
     request = :expects
     call(process_name, request)
@@ -117,19 +117,19 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
-  @spec history(process_name) :: ok
+  @spec history(process_name) :: history
         when process_name: Nuntiux.process_name(),
-             ok: history()
+             history: history()
   def history(process_name) do
     request = :history
     call(process_name, request)
   end
 
   @doc false
-  @spec received?(process_name, message) :: ok
+  @spec received?(process_name, message) :: received?
         when process_name: Nuntiux.process_name(),
              message: term(),
-             ok: received?()
+             received?: received?()
   def received?(process_name, message) do
     request = {:received?, message}
     call(process_name, request)
@@ -169,10 +169,10 @@ defmodule Nuntiux.Mocker do
     loop(state)
   end
 
-  @spec call(process_name, request) :: ok
+  @spec call(process_name, request) :: result_call
         when process_name: Nuntiux.process_name(),
              request: request_call(),
-             ok: result_call()
+             result_call: result_call()
   defp call(process_name, request) do
     label = :"$nuntiux.call"
     {:ok, result} = :gen.call(process_name, label, request)
@@ -216,9 +216,10 @@ defmodule Nuntiux.Mocker do
     loop(next_state)
   end
 
-  @spec handle_call(request, state) :: ok
+  @spec handle_call(request, state) :: result_call
         when request: request_call(),
-             ok: result_call()
+             state: state(),
+             result_call: result_call()
   defp handle_call(request, state) do
     case request do
       :history -> Enum.reverse(state.history)
@@ -227,10 +228,10 @@ defmodule Nuntiux.Mocker do
     end
   end
 
-  @spec handle_cast(request, state) :: ok
+  @spec handle_cast(request, state) :: updated_state
         when request: request_cast(),
              state: state(),
-             ok: state
+             updated_state: state()
   defp handle_cast(request, state) do
     case request do
       :reset_history ->
@@ -258,9 +259,10 @@ defmodule Nuntiux.Mocker do
     opts[:history?]
   end
 
-  @spec handle_message(message, state) :: state
+  @spec handle_message(message, state) :: updated_state
         when message: term(),
-             state: state()
+             state: state(),
+             updated_state: state()
   defp handle_message(message, state) do
     expects_ran = maybe_run_expects(message, state.expects)
     expects_ran or maybe_passthrough(message, state)
@@ -279,10 +281,10 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
-  @spec maybe_run_expects(message, expects) :: ok
+  @spec maybe_run_expects(message, expects) :: expects_ran?
         when message: term(),
              expects: expects(),
-             ok: boolean()
+             expects_ran?: boolean()
   defp maybe_run_expects(message, expects) do
     Enum.reduce(
       expects,
@@ -303,9 +305,10 @@ defmodule Nuntiux.Mocker do
     )
   end
 
-  @spec maybe_passthrough(message, state) :: message | ignore
+  @spec maybe_passthrough(message, state) :: ok | ignore
         when message: term(),
              state: state(),
+             ok: :ok,
              ignore: :ignore
   defp maybe_passthrough(message, state) do
     opts = state.opts
@@ -319,9 +322,10 @@ defmodule Nuntiux.Mocker do
     :ignore
   end
 
-  @spec maybe_add_event(message, state) :: state
+  @spec maybe_add_event(message, state) :: updated_state
         when message: term(),
-             state: state()
+             state: state(),
+             updated_state: state()
   defp maybe_add_event(message, state) do
     opts = state.opts
 
