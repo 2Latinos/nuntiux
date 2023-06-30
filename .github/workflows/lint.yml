@@ -21,6 +21,8 @@ jobs:
       - name: yamllint
         uses: ibiqlik/action-yamllint@v3
         with:
-          file_or_dir: .github/workflows
+          file_or_dir: |
+            .github/**/*.yml
+            .*.yml
           strict: true
           config_file: .yamllint.yml
