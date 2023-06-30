@@ -39,7 +39,7 @@ defmodule Nuntiux.MixProject do
         "format",
         "credo",
         "dialyzer",
-        "test"
+        "test --cover"
       ]
     ]
   end
