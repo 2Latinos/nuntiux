@@ -11,6 +11,10 @@ defmodule Nuntiux do
   @type history :: Nuntiux.Mocker.history()
   @type received? :: Nuntiux.Mocker.received?()
   @type event :: Nuntiux.Mocker.event()
+  @type expect_fun :: Nuntiux.Mocker.expect_fun()
+  @type expect_name :: Nuntiux.Mocker.expect_name()
+  @type expect_id :: Nuntiux.Mocker.expect_id()
+  @type expects :: Nuntiux.Mocker.expects()
 
   defmacro if_mocked(process_name, fun) do
     quote bind_quoted: [
@@ -18,7 +22,7 @@ defmodule Nuntiux do
             fun: fun
           ] do
       if process_name in mocked(),
-        do: fun.(process_name),
+        do: fun.(),
         else: {:error, :not_mocked}
     end
   end
@@ -58,19 +62,29 @@ defmodule Nuntiux do
              ok: :ok,
              error: {:error, :not_found}
   def new(process_name, opts \\ []) do
-    default_opts = [{:passthrough?, true}, {:history?, true}]
-    opts = Keyword.merge(default_opts, opts)
     Nuntiux.Supervisor.start_mock(process_name, opts)
   end
 
   @doc """
-  Removes a mocking process.
+  Removes a mocking process or expect function.
+  If the expect function was not already there, this function still returns 'ok'.
+  If the process is not mocked, an error is returned.
   """
-  @spec delete(process_name) :: ok | error
+  @spec delete(process_name, expect_id) :: ok | error
         when process_name: process_name(),
+             expect_id: nil | expect_id(),
              ok: :ok,
              error: {:error, :not_mocked}
-  defdelegate delete(process_name), to: Nuntiux.Supervisor, as: :stop_mock
+  def delete(process_name, expect_id \\ nil) do
+    if_mocked(
+      process_name,
+      fn ->
+        if is_nil(expect_id),
+          do: Nuntiux.Supervisor.stop_mock(process_name),
+          else: Nuntiux.Mocker.delete(process_name, expect_id)
+      end
+    )
+  end
 
   @doc """
   Returns the list of mocked processes.
@@ -87,7 +101,12 @@ defmodule Nuntiux do
              ok: pid(),
              error: {:error, :not_mocked}
   def mocked_process(process_name) do
-    if_mocked(process_name, &Nuntiux.Mocker.mocked_process/1)
+    if_mocked(
+      process_name,
+      fn ->
+        Nuntiux.Mocker.mocked_process(process_name)
+      end
+    )
   end
 
   @doc """
@@ -95,10 +114,15 @@ defmodule Nuntiux do
   """
   @spec history(process_name) :: ok | error
         when process_name: process_name(),
-             ok: Nuntiux.Mocker.history(),
+             ok: history(),
              error: {:error, :not_mocked}
   def history(process_name) do
-    if_mocked(process_name, &Nuntiux.Mocker.history/1)
+    if_mocked(
+      process_name,
+      fn ->
+        Nuntiux.Mocker.history(process_name)
+      end
+    )
   end
 
   @doc """
@@ -108,10 +132,15 @@ defmodule Nuntiux do
   @spec received?(process_name, message) :: ok | error
         when process_name: process_name(),
              message: term(),
-             ok: Nuntiux.Mocker.received?(),
+             ok: received?(),
              error: {:error, :not_mocked}
   def received?(process_name, message) do
-    if_mocked(process_name, &Nuntiux.Mocker.received?(&1, message))
+    if_mocked(
+      process_name,
+      fn ->
+        Nuntiux.Mocker.received?(process_name, message)
+      end
+    )
   end
 
   @doc """
@@ -122,6 +151,52 @@ defmodule Nuntiux do
              ok: :ok,
              error: {:error, :not_mocked}
   def reset_history(process_name) do
-    if_mocked(process_name, &Nuntiux.Mocker.reset_history/1)
+    if_mocked(
+      process_name,
+      fn ->
+        Nuntiux.Mocker.reset_history(process_name)
+      end
+    )
+  end
+
+  @doc """
+  Adds a new (*named*?) expect function to a mocked process.
+  When a message is received by the process, this function will be run on it.
+  If the message doesn't match any clause, nothing will be done.
+  If the process is not mocked, an error is returned.
+  If the expect function is named, and there was already an expect function with that name,
+  it's replaced.
+  If the expect function is named, when it is successfully added or replaced, it'll keep the name
+  as its identifier. Otherwise, a reference is returned as an identifier.
+  """
+  @spec expect(process_name, expect_name, expect_fun) :: ok | error
+        when process_name: process_name(),
+             expect_name: nil | expect_name(),
+             expect_fun: expect_fun(),
+             ok: expect_id(),
+             error: {:error, :not_mocked}
+  def expect(process_name, expect_name \\ nil, expect_fun) do
+    if_mocked(
+      process_name,
+      fn ->
+        Nuntiux.Mocker.expect(process_name, expect_name, expect_fun)
+      end
+    )
+  end
+
+  @doc """
+  Returns the list of expect functions for a process.
+  """
+  @spec expects(process_name) :: ok | error
+        when process_name: process_name(),
+             ok: expects(),
+             error: {:error, :not_mocked}
+  def expects(process_name) do
+    if_mocked(
+      process_name,
+      fn ->
+        Nuntiux.Mocker.expects(process_name)
+      end
+    )
   end
 end

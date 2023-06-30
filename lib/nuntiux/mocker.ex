@@ -7,17 +7,41 @@ defmodule Nuntiux.Mocker do
   @type history :: [event()]
   @type received? :: boolean()
   @type event :: %{timestamp: integer(), message: term()}
+  @type expect_fun :: (... -> term())
+  @type expect_name :: atom()
+  @type expect_id :: reference() | expect_name()
+  @type expects :: %{expect_id() => expect_fun()}
 
   @typep state :: %{
            process_name: Nuntiux.process_name(),
            process_pid: pid(),
            process_monitor: reference(),
-           history: [event()],
-           opts: opts()
+           history: history(),
+           opts: opts(),
+           expects: expects()
          }
-  @typep request :: :history | {:received?, message :: term()}
+  @typep request_call ::
+           :history
+           | {:received?, message :: term()}
+           | :expects
+  @typep result_call ::
+           history()
+           | received?()
+           | expects()
+  @typep request_cast ::
+           :reset_history
+           | {:delete, expect_id()}
+           | {:expect, expect_id(), expect_fun()}
 
   @mocked_process_key :"#{__MODULE__}.mocked_process"
+  @default_history []
+  @default_opts [{:passthrough?, true}, {:history?, true}]
+  @default_expects %{}
+  @default_state %{
+    history: @default_history,
+    opts: @default_opts,
+    expects: @default_expects
+  }
 
   @doc false
   @spec start_link(process_name, opts) :: ok | ignore
@@ -39,12 +63,44 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
-  @spec delete(process_name) :: ok
+  @spec expect(process_name, expect_name, expect_fun) :: ok
         when process_name: Nuntiux.process_name(),
+             expect_name: nil | expect_name(),
+             expect_fun: expect_fun(),
+             ok: expect_id()
+  def expect(process_name, expect_name, expect_fun) do
+    expect_id =
+      if is_nil(expect_name),
+        do: make_ref(),
+        else: expect_name
+
+    request = {:expect, expect_id, expect_fun}
+    cast(process_name, request)
+    expect_id
+  end
+
+  @doc false
+  @spec expects(process_name) :: ok
+        when process_name: Nuntiux.process_name(),
+             ok: expects()
+  def expects(process_name) do
+    request = :expects
+    call(process_name, request)
+  end
+
+  @doc false
+  @spec delete(process_name, expect_id) :: ok
+        when process_name: Nuntiux.process_name(),
+             expect_id: nil | expect_id(),
              ok: :ok
-  def delete(process_name) do
-    process_pid = mocked_process(process_name)
-    reregister(process_name, process_pid)
+  def delete(process_name, expect_id \\ nil) do
+    if is_nil(expect_id) do
+      process_pid = mocked_process(process_name)
+      reregister(process_name, process_pid)
+    else
+      request = {:delete, expect_id}
+      cast(process_name, request)
+    end
   end
 
   @doc false
@@ -84,10 +140,8 @@ defmodule Nuntiux.Mocker do
         when process_name: Nuntiux.process_name(),
              ok: :ok
   def reset_history(process_name) do
-    label = :"$nuntiux.cast"
     request = :reset_history
-    send(process_name, {label, request})
-    :ok
+    cast(process_name, request)
   end
 
   @doc false
@@ -102,23 +156,37 @@ defmodule Nuntiux.Mocker do
     reregister(process_name, mocker_pid, process_pid)
     :proc_lib.init_ack({:ok, mocker_pid})
 
-    loop(%{
-      process_name: process_name,
-      process_pid: process_pid,
-      process_monitor: process_monitor,
-      history: [],
-      opts: opts
-    })
+    opts = Keyword.merge(@default_opts, opts)
+
+    state =
+      Map.merge(@default_state, %{
+        process_name: process_name,
+        process_pid: process_pid,
+        process_monitor: process_monitor,
+        opts: opts
+      })
+
+    loop(state)
   end
 
   @spec call(process_name, request) :: ok
         when process_name: Nuntiux.process_name(),
-             request: request(),
-             ok: history() | received?()
+             request: request_call(),
+             ok: result_call()
   defp call(process_name, request) do
     label = :"$nuntiux.call"
     {:ok, result} = :gen.call(process_name, label, request)
     result
+  end
+
+  @spec cast(process_name, request) :: ok
+        when process_name: Nuntiux.process_name(),
+             request: request_cast(),
+             ok: :ok
+  defp cast(process_name, request) do
+    label = :"$nuntiux.cast"
+    send(process_name, {label, request})
+    :ok
   end
 
   @spec loop(state) :: no_return
@@ -134,11 +202,12 @@ defmodule Nuntiux.Mocker do
           exit(reason)
 
         {:"$nuntiux.call", from, request} ->
-          :gen.reply(from, handle_call(request, state))
+          handled_call = handle_call(request, state)
+          :gen.reply(from, handled_call)
           state
 
-        {:"$nuntiux.cast", :reset_history} ->
-          %{state | history: []}
+        {:"$nuntiux.cast", request} ->
+          handle_cast(request, state)
 
         message ->
           handle_message(message, state)
@@ -148,34 +217,44 @@ defmodule Nuntiux.Mocker do
   end
 
   @spec handle_call(request, state) :: ok
-        when request: request(),
-             ok: history() | received?()
-  def handle_call(request, state) do
-    history = state.history
-
+        when request: request_call(),
+             ok: result_call()
+  defp handle_call(request, state) do
     case request do
-      :history -> Enum.reverse(history)
-      {:received?, message} -> Enum.any?(history, &(&1.message == message))
+      :history -> Enum.reverse(state.history)
+      {:received?, message} -> Enum.any?(state.history, &(&1.message == message))
+      :expects -> state.expects
     end
   end
 
-  @doc """
-  Signals if option `passthrough?` is enabled or not.
-  """
+  @spec handle_cast(request, state) :: ok
+        when request: request_cast(),
+             state: state(),
+             ok: state
+  defp handle_cast(request, state) do
+    case request do
+      :reset_history ->
+        %{state | history: []}
+
+      {:delete, expect_id} ->
+        %{state | expects: Map.delete(state.expects, expect_id)}
+
+      {:expect, expect_id, expect_fun} ->
+        %{state | expects: Map.put(state.expects, expect_id, expect_fun)}
+    end
+  end
+
   @spec passthrough?(opts) :: passthrough?
         when opts: opts(),
              passthrough?: boolean()
-  def passthrough?(opts) do
+  defp passthrough?(opts) do
     opts[:passthrough?]
   end
 
-  @doc """
-  Signals if option `history?` is enabled or not.
-  """
   @spec history?(opts) :: history?
         when opts: opts(),
              history?: boolean()
-  def history?(opts) do
+  defp history?(opts) do
     opts[:history?]
   end
 
@@ -183,7 +262,8 @@ defmodule Nuntiux.Mocker do
         when message: term(),
              state: state()
   defp handle_message(message, state) do
-    maybe_passthrough(message, state)
+    expects_ran = maybe_run_expects(message, state.expects)
+    expects_ran or maybe_passthrough(message, state)
     maybe_add_event(message, state)
   end
 
@@ -197,6 +277,30 @@ defmodule Nuntiux.Mocker do
     Process.register(target_pid, process_name)
     if is_pid(source_pid), do: Process.put(@mocked_process_key, source_pid)
     :ok
+  end
+
+  @spec maybe_run_expects(message, expects) :: ok
+        when message: term(),
+             expects: expects(),
+             ok: boolean()
+  defp maybe_run_expects(message, expects) do
+    Enum.reduce(
+      expects,
+      _expects_ran = false,
+      fn
+        {_expect_id, _expect_fun}, true = _done ->
+          true
+
+        {_expect_id, expect_fun}, false ->
+          try do
+            expect_fun.(message)
+            true
+          catch
+            :error, :function_clause ->
+              false
+          end
+      end
+    )
   end
 
   @spec maybe_passthrough(message, state) :: message | ignore
