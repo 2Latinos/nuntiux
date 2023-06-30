@@ -14,7 +14,6 @@ defmodule Nuntiux.Mocker do
 
   @typep state :: %{
            process_name: Nuntiux.process_name(),
-           process_pid: pid(),
            process_monitor: reference(),
            history: history(),
            opts: opts(),
@@ -42,6 +41,10 @@ defmodule Nuntiux.Mocker do
     opts: @default_opts,
     expects: @default_expects
   }
+  @label_call :"$nuntiux.call"
+  @label_cast :"$nuntiux.cast"
+  @label_process_pid :"$nuntiux.process_pid"
+  @label_current_message :"$nuntiux.current_message"
 
   @doc false
   @spec start_link(process_name, opts) :: ok | ignore
@@ -63,11 +66,11 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
-  @spec expect(process_name, expect_name, expect_fun) :: ok
+  @spec expect(process_name, expect_name, expect_fun) :: expect_id
         when process_name: Nuntiux.process_name(),
              expect_name: nil | expect_name(),
              expect_fun: expect_fun(),
-             ok: expect_id()
+             expect_id: expect_id()
   def expect(process_name, expect_name, expect_fun) do
     expect_id =
       if is_nil(expect_name),
@@ -80,9 +83,9 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
-  @spec expects(process_name) :: ok
+  @spec expects(process_name) :: expects
         when process_name: Nuntiux.process_name(),
-             ok: expects()
+             expects: expects()
   def expects(process_name) do
     request = :expects
     call(process_name, request)
@@ -117,19 +120,44 @@ defmodule Nuntiux.Mocker do
   end
 
   @doc false
-  @spec history(process_name) :: ok
+  @spec passthrough() :: ok
+        when ok: :ok
+  def passthrough do
+    message = current_message()
+    passthrough(message)
+  end
+
+  @doc false
+  @spec passthrough(message) :: ok
+        when message: term(),
+             ok: :ok
+  def passthrough(message) do
+    process_pid = process_pid()
+    send(process_pid, message)
+    :ok
+  end
+
+  @doc false
+  @spec mocked_process() :: pid
+        when pid: pid()
+  def mocked_process do
+    process_pid()
+  end
+
+  @doc false
+  @spec history(process_name) :: history
         when process_name: Nuntiux.process_name(),
-             ok: history()
+             history: history()
   def history(process_name) do
     request = :history
     call(process_name, request)
   end
 
   @doc false
-  @spec received?(process_name, message) :: ok
+  @spec received?(process_name, message) :: received?
         when process_name: Nuntiux.process_name(),
              message: term(),
-             ok: received?()
+             received?: received?()
   def received?(process_name, message) do
     request = {:received?, message}
     call(process_name, request)
@@ -161,21 +189,20 @@ defmodule Nuntiux.Mocker do
     state =
       Map.merge(@default_state, %{
         process_name: process_name,
-        process_pid: process_pid,
         process_monitor: process_monitor,
         opts: opts
       })
 
+    process_pid(process_pid)
     loop(state)
   end
 
-  @spec call(process_name, request) :: ok
+  @spec call(process_name, request) :: result_call
         when process_name: Nuntiux.process_name(),
              request: request_call(),
-             ok: result_call()
+             result_call: result_call()
   defp call(process_name, request) do
-    label = :"$nuntiux.call"
-    {:ok, result} = :gen.call(process_name, label, request)
+    {:ok, result} = :gen.call(process_name, @label_call, request)
     result
   end
 
@@ -184,8 +211,7 @@ defmodule Nuntiux.Mocker do
              request: request_cast(),
              ok: :ok
   defp cast(process_name, request) do
-    label = :"$nuntiux.cast"
-    send(process_name, {label, request})
+    send(process_name, {@label_cast, request})
     :ok
   end
 
@@ -194,19 +220,19 @@ defmodule Nuntiux.Mocker do
              no_return: no_return()
   defp loop(state) do
     process_monitor = state.process_monitor
-    process_pid = state.process_pid
+    process_pid = process_pid()
 
     next_state =
       receive do
         {:DOWN, ^process_monitor, :process, ^process_pid, reason} ->
           exit(reason)
 
-        {:"$nuntiux.call", from, request} ->
+        {@label_call, from, request} ->
           handled_call = handle_call(request, state)
           :gen.reply(from, handled_call)
           state
 
-        {:"$nuntiux.cast", request} ->
+        {@label_cast, request} ->
           handle_cast(request, state)
 
         message ->
@@ -216,9 +242,10 @@ defmodule Nuntiux.Mocker do
     loop(next_state)
   end
 
-  @spec handle_call(request, state) :: ok
+  @spec handle_call(request, state) :: result_call
         when request: request_call(),
-             ok: result_call()
+             state: state(),
+             result_call: result_call()
   defp handle_call(request, state) do
     case request do
       :history -> Enum.reverse(state.history)
@@ -227,10 +254,10 @@ defmodule Nuntiux.Mocker do
     end
   end
 
-  @spec handle_cast(request, state) :: ok
+  @spec handle_cast(request, state) :: updated_state
         when request: request_cast(),
              state: state(),
-             ok: state
+             updated_state: state()
   defp handle_cast(request, state) do
     case request do
       :reset_history ->
@@ -258,12 +285,14 @@ defmodule Nuntiux.Mocker do
     opts[:history?]
   end
 
-  @spec handle_message(message, state) :: state
+  @spec handle_message(message, state) :: updated_state
         when message: term(),
-             state: state()
+             state: state(),
+             updated_state: state()
   defp handle_message(message, state) do
-    expects_ran = maybe_run_expects(message, state.expects)
-    expects_ran or maybe_passthrough(message, state)
+    current_message(message)
+    expects_ran? = maybe_run_expects(message, state.expects)
+    expects_ran? or maybe_passthrough(message, state)
     maybe_add_event(message, state)
   end
 
@@ -279,10 +308,10 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
-  @spec maybe_run_expects(message, expects) :: ok
+  @spec maybe_run_expects(message, expects) :: expects_ran?
         when message: term(),
              expects: expects(),
-             ok: boolean()
+             expects_ran?: boolean()
   defp maybe_run_expects(message, expects) do
     Enum.reduce(
       expects,
@@ -303,25 +332,19 @@ defmodule Nuntiux.Mocker do
     )
   end
 
-  @spec maybe_passthrough(message, state) :: message | ignore
+  @spec maybe_passthrough(message, state) :: ok
         when message: term(),
              state: state(),
-             ignore: :ignore
+             ok: :ok
   defp maybe_passthrough(message, state) do
-    opts = state.opts
-    process_pid = state.process_pid
-
-    if passthrough?(opts),
-      do: send(process_pid, message),
-      else: :ignore
-
-    # We don't pass messages through, we just ignore them.
-    :ignore
+    passthrough?(state.opts) and passthrough(message)
+    :ok
   end
 
-  @spec maybe_add_event(message, state) :: state
+  @spec maybe_add_event(message, state) :: updated_state
         when message: term(),
-             state: state()
+             state: state(),
+             updated_state: state()
   defp maybe_add_event(message, state) do
     opts = state.opts
 
@@ -336,5 +359,33 @@ defmodule Nuntiux.Mocker do
     else
       state
     end
+  end
+
+  @spec process_pid(process_pid) :: ok
+        when process_pid: pid(),
+             ok: :ok
+  defp process_pid(process_pid) do
+    nil = Process.put(@label_process_pid, process_pid)
+    :ok
+  end
+
+  @spec process_pid() :: pid
+        when pid: pid()
+  defp process_pid do
+    Process.get(@label_process_pid)
+  end
+
+  @spec current_message(message) :: ok
+        when message: term(),
+             ok: :ok
+  defp current_message(message) do
+    _previous_message = Process.put(@label_current_message, message)
+    :ok
+  end
+
+  @spec current_message() :: message
+        when message: term()
+  defp current_message do
+    Process.get(@label_current_message)
   end
 end

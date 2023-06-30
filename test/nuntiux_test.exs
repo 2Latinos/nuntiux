@@ -282,6 +282,107 @@ defmodule NuntiuxTest do
             :ok
         end
     end
+
+    test "mocked processes keep their source pid", %{
+      echoer_pid: echoer_pid,
+      echoer_name: echoer_name
+    } do
+      boom = :boom
+      from_mocked = :from_mocked
+      self = self()
+
+      :ok = Nuntiux.new(echoer_name)
+
+      _expect_id =
+        Nuntiux.expect(
+          echoer_name,
+          fn ^boom ->
+            ^echoer_pid = Nuntiux.mocked_process()
+            send(self, from_mocked)
+          end
+        )
+
+      # We send the mocked process a message
+      send(echoer_name, boom)
+
+      receive do
+        ^from_mocked ->
+          # ... and if we got here we have echo's pid inside the expectation
+          :ok
+      after
+        250 ->
+          raise "timeout"
+      end
+    end
+
+    test "allows passing a message down to the original process", %{echoer_name: echoer_name} do
+      back = :back
+      :ok = Nuntiux.new(echoer_name)
+
+      # We pass a message to the mocked process
+      _expect_id = Nuntiux.expect(echoer_name, fn _anything -> Nuntiux.passthrough() end)
+      # ... and since it's an echo process, we get it back
+      send2(echoer_name, back)
+
+      receive do
+        {_ref, ^back} ->
+          # ... but not from the pass through
+          raise "received"
+      after
+        250 ->
+          :ok
+      end
+    end
+
+    test "allows passing a specific message, inside the expectation, down to the original process",
+         %{echoer_name: echoer_name} do
+      message = :message
+      :ok = Nuntiux.new(echoer_name)
+
+      _expect_id =
+        Nuntiux.expect(
+          echoer_name,
+          fn _anything ->
+            # We pass a specific message to the mocked process
+            Nuntiux.passthrough({self(), make_ref(), message})
+
+            receive do
+              {_ref, ^message} ->
+                # ... and then we get it back (inside the process)
+                :ok
+            after
+              250 ->
+                raise "timeout"
+            end
+          end
+        )
+
+      send(echoer_name, message)
+
+      # And now, for a different test...
+      new_message = :new_message
+      self = self()
+
+      _expect_id =
+        Nuntiux.expect(
+          echoer_name,
+          fn _anything ->
+            # We pass another specific message to the mocked process
+            Nuntiux.passthrough({self, make_ref(), new_message})
+          end
+        )
+
+      send(echoer_name, new_message)
+
+      receive do
+        {_ref, ^new_message} ->
+          # ... but we don't get it back (outside the process)
+          raise "received"
+      after
+        250 ->
+          :ok
+      end
+    end
   end
 
   defp send2(dest, msg) do
