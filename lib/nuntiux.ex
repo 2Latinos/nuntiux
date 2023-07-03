@@ -54,7 +54,6 @@ defmodule Nuntiux do
 
   @doc """
   Injects a new mock process in front of the process with the provided name.
-  Returns an error if there is no process registered under that name.
   """
   @spec new(process_name, opts) :: ok | error
         when process_name: process_name(),
@@ -68,7 +67,6 @@ defmodule Nuntiux do
   @doc """
   Removes a mocking process or expect function.
   If the expect function was not already there, this function still returns 'ok'.
-  If the process is not mocked, an error is returned.
   """
   @spec delete(process_name, expect_id) :: ok | error
         when process_name: process_name(),
@@ -157,7 +155,7 @@ defmodule Nuntiux do
   @spec received?(process_name, message) :: received? | error
         when process_name: process_name(),
              message: term(),
-             received?: received?(),
+             received?: boolean(),
              error: {:error, :not_mocked}
   def received?(process_name, message) do
     if_mocked(
