@@ -323,7 +323,7 @@ defmodule Nuntiux.Mocker do
              expects: expects(),
              expects_matched: expects_matched()
   defp maybe_run_expects(message, expects) do
-    Enum.reduce(
+    Enum.reduce_while(
       expects,
       @label_nomatch,
       fn
@@ -332,10 +332,10 @@ defmodule Nuntiux.Mocker do
 
         {_expect_id, expect_fun}, @label_nomatch ->
           try do
-            {@label_match, expect_fun.(message)}
+            {:cont, {@label_match, expect_fun.(message)}}
           catch
             :error, :function_clause ->
-              @label_nomatch
+              {:cont, @label_nomatch}
           end
       end
     )
