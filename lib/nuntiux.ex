@@ -5,15 +5,43 @@ defmodule Nuntiux do
 
   @application :nuntiux
 
+  @typedoc """
+  The name of a process.
+  """
   @type process_name :: atom()
-
+  @typedoc """
+  Options to pass to the mocker process:
+  * `:passthrough?`: indicates if messages received by the mock process are passed through to
+    the mocked process (defaults to `true`)
+  * `:history?`: indicates if the mock is to keep a history of messages it receives
+    (defaults to `true`)
+  """
   @type opts :: Nuntiux.Mocker.opts()
+  @typedoc """
+  A list of `event()`.
+  """
   @type history :: Nuntiux.Mocker.history()
-  @type received? :: Nuntiux.Mocker.received?()
+  @typedoc """
+  A timestamped message.
+  """
   @type event :: Nuntiux.Mocker.event()
+  @typedoc """
+  An expectation handler: a function that matches on a message and potentially does something
+  with it.
+  """
   @type expect_fun :: Nuntiux.Mocker.expect_fun()
+  @typedoc """
+  The name of an expectation.
+  """
   @type expect_name :: Nuntiux.Mocker.expect_name()
+  @typedoc """
+  The identifier of an expectation.
+  If the expectation is not named, this is "an almost unique reference", as per `Kernel.make_ref/0`
+  """
   @type expect_id :: Nuntiux.Mocker.expect_id()
+  @typedoc """
+  A map of expectation identifiers to their expectation handlers.
+  """
   @type expects :: Nuntiux.Mocker.expects()
 
   defmacro if_mocked(process_name, fun) do
