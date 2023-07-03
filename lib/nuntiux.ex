@@ -88,7 +88,7 @@ defmodule Nuntiux do
              opts: opts(),
              ok: :ok,
              error: {:error, :not_found}
-  def new(process_name, opts \\ []) do
+  def new(process_name, opts \\ %{}) do
     Nuntiux.Supervisor.start_mock(process_name, opts)
   end
 
