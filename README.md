@@ -59,6 +59,17 @@ the message,
 * `:passed_through?`: an indication of whether or not the received message was passed through to
 the mocked process.
 
+## Caveats
+
+`Nuntiux` tries to execute your expectations by simply calling their declarations inside a
+`try-catch` expression. Because of this, non-matching expectations will return a `function_clause`,
+that is caught.
+Since it's not possible (at this moment) to distinguish a `function_clause` provoked by `Nuntiux`'
+internal code or your own, we propose you to make sure your functions don't fail with a
+`function_clause`.
+You can also check the message history to understand if a given message was mocked and/or
+passed through.
+
 ## Documentation
 
 Documentation is generated with:

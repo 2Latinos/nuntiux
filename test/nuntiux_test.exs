@@ -164,7 +164,7 @@ defmodule NuntiuxTest do
     end
 
     test "history is not available under certain conditions", %{plus_oner_name: plus_oner_name} do
-      :ok = Nuntiux.new(plus_oner_name, history?: false)
+      :ok = Nuntiux.new(plus_oner_name, %{history?: false})
 
       # Originally the history is empty
       [] = Nuntiux.history(plus_oner_name)
@@ -249,7 +249,7 @@ defmodule NuntiuxTest do
     end
 
     test "allows changing behaviour based on expectations", %{echoer_name: echoer_name} do
-      :ok = Nuntiux.new(echoer_name, passthrough?: false)
+      :ok = Nuntiux.new(echoer_name, %{passthrough?: false})
       self = self()
       boomerang = :boomerang
       kylie = :kylie
@@ -264,6 +264,7 @@ defmodule NuntiuxTest do
 
       receive do
         {:echoed, ^boomerang} ->
+          [%{mocked?: true, passed_through?: false}] = Nuntiux.history(echoer_name)
           :ok
       after
         250 ->
@@ -279,6 +280,7 @@ defmodule NuntiuxTest do
             :ignored
         after
           250 ->
+            [_, %{mocked?: false, passed_through?: false}] = Nuntiux.history(echoer_name)
             :ok
         end
     end
@@ -307,6 +309,7 @@ defmodule NuntiuxTest do
 
       receive do
         ^from_mocked ->
+          [%{mocked?: true, passed_through?: false}] = Nuntiux.history(echoer_name)
           # ... and if we got here we have echo's pid inside the expectation
           :ok
       after
@@ -330,6 +333,8 @@ defmodule NuntiuxTest do
           raise "received"
       after
         250 ->
+          # The last message was explicitly passed through
+          [%{mocked?: true, passed_through?: true}] = Nuntiux.history(echoer_name)
           :ok
       end
     end
@@ -337,7 +342,7 @@ defmodule NuntiuxTest do
     test "allows passing a specific message, inside the expectation, down to the original process",
          %{echoer_name: echoer_name} do
       message = :message
-      :ok = Nuntiux.new(echoer_name)
+      :ok = Nuntiux.new(echoer_name, %{passthrough?: false})
 
       _expect_id =
         Nuntiux.expect(
@@ -380,6 +385,10 @@ defmodule NuntiuxTest do
           raise "received"
       after
         250 ->
+          # Messages were explicitly passed through
+          [%{mocked?: true, passed_through?: true}, %{mocked?: true, passed_through?: true}] =
+            Nuntiux.history(echoer_name)
+
           :ok
       end
     end
