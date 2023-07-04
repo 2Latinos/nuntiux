@@ -7,7 +7,7 @@ defmodule Nuntiux.Mocker do
   @type history :: [event()]
   @type received? :: boolean()
   @type event :: %{timestamp: integer(), message: term()}
-  @type expect_fun :: (... -> term())
+  @type expect_fun :: (message: term() -> term())
   @type expect_name :: atom()
   @type expect_id :: reference() | expect_name()
   @type expects :: %{expect_id() => expect_fun()}
