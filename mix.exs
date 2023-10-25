@@ -13,6 +13,7 @@ defmodule Nuntiux.MixProject do
       deps: deps(),
       description: "A library to mock registered processes",
       dialyzer: dialyzer(),
+      docs: docs(),
       elixir: @elixir,
       elixirc_options: elixirc_options(),
       name: "Nuntiux",
@@ -61,6 +62,20 @@ defmodule Nuntiux.MixProject do
         :unmatched_returns
       ],
       plt_add_deps: :apps_direct
+    ]
+  end
+
+  defp docs do
+    [
+      extras: [
+        "README.md",
+        "SECURITY.md",
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "LICENSE.md",
+        "CHANGELOG.md"
+      ],
+      main: "readme"
     ]
   end
 
