@@ -347,7 +347,7 @@ defmodule NuntiuxTest do
       _expect_id =
         Nuntiux.expect(
           echoer_name,
-          fn _anything ->
+          fn ^message ->
             # We pass a specific message to the mocked process
             Nuntiux.passthrough({self(), make_ref(), message})
 
@@ -371,25 +371,25 @@ defmodule NuntiuxTest do
       _expect_id =
         Nuntiux.expect(
           echoer_name,
-          fn _anything ->
+          fn ^new_message ->
             # We pass another specific message to the mocked process
-            Nuntiux.passthrough({self, make_ref(), new_message})
+            mocked = Nuntiux.mocked_process()
+            Nuntiux.passthrough({self, make_ref(), {new_message, mocked}})
           end
         )
 
       send(echoer_name, new_message)
 
+      mocked = Nuntiux.mocked_process(echoer_name)
+
       receive do
-        {_ref, ^new_message} ->
-          # ... but we don't get it back (outside the process)
-          raise "received"
-      after
-        250 ->
-          # Messages were explicitly passed through
+        {_ref, {^new_message, ^mocked}} ->
+          # ... and we get it back (from the mocked process - notice _mocked_)
           [%{mocked?: true, passed_through?: true}, %{mocked?: true, passed_through?: true}] =
             Nuntiux.history(echoer_name)
-
-          :ok
+      after
+        250 ->
+          raise "not received"
       end
     end
   end
