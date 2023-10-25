@@ -3,6 +3,7 @@ defmodule Nuntiux do
   This is Nuntiux.
   """
 
+  # The same as found in mix.exs
   @application :nuntiux
 
   @typedoc """
