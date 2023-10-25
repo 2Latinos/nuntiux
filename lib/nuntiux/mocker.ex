@@ -217,6 +217,7 @@ defmodule Nuntiux.Mocker do
     loop(state)
   end
 
+  @doc false
   @spec call(process_name, request) :: result_call
         when process_name: Nuntiux.process_name(),
              request: request_call(),
@@ -226,6 +227,7 @@ defmodule Nuntiux.Mocker do
     result
   end
 
+  @doc false
   @spec cast(process_name, request) :: ok
         when process_name: Nuntiux.process_name(),
              request: request_cast(),
@@ -235,6 +237,7 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
+  @doc false
   @spec loop(state) :: no_return
         when state: state(),
              no_return: no_return()
@@ -262,6 +265,7 @@ defmodule Nuntiux.Mocker do
     loop(next_state)
   end
 
+  @doc false
   @spec handle_call(request, state) :: result_call
         when request: request_call(),
              state: state(),
@@ -278,6 +282,7 @@ defmodule Nuntiux.Mocker do
     state.expects
   end
 
+  @doc false
   @spec handle_cast(request, state) :: updated_state
         when request: request_cast(),
              state: state(),
@@ -295,6 +300,7 @@ defmodule Nuntiux.Mocker do
     end
   end
 
+  @doc false
   @spec handle_message(message, state) :: updated_state
         when message: term(),
              state: state(),
@@ -307,6 +313,7 @@ defmodule Nuntiux.Mocker do
     maybe_add_event(message, expects_matched, state)
   end
 
+  @doc false
   @spec reregister(process_name, target_pid, source_pid) :: ok
         when process_name: Nuntiux.process_name(),
              target_pid: pid(),
@@ -319,6 +326,7 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
+  @doc false
   @spec maybe_run_expects(message, expects) :: expects_matched
         when message: term(),
              expects: expects(),
@@ -342,6 +350,7 @@ defmodule Nuntiux.Mocker do
     )
   end
 
+  @doc false
   @spec maybe_passthrough(message, expects_matched, opts) :: ok
         when message: term(),
              expects_matched: expects_matched(),
@@ -359,6 +368,7 @@ defmodule Nuntiux.Mocker do
     passthrough(message)
   end
 
+  @doc false
   @spec maybe_add_event(message, expects_matched, state) :: updated_state
         when message: term(),
              expects_matched: expects_matched(),
@@ -390,6 +400,7 @@ defmodule Nuntiux.Mocker do
     state
   end
 
+  @doc false
   @spec process_pid(process_pid) :: ok
         when process_pid: pid(),
              ok: :ok
@@ -398,12 +409,14 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
+  @doc false
   @spec process_pid() :: pid
         when pid: pid()
   defp process_pid do
     Process.get(@label_process_pid)
   end
 
+  @doc false
   @spec current_message(message) :: ok
         when message: term(),
              ok: :ok
@@ -412,12 +425,14 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
+  @doc false
   @spec current_message() :: message
         when message: term()
   defp current_message do
     Process.get(@label_current_message)
   end
 
+  @doc false
   @spec passed_through?(new_passed_through?) :: old_passed_through?
         when new_passed_through?: boolean(),
              old_passed_through?: boolean()
@@ -425,6 +440,7 @@ defmodule Nuntiux.Mocker do
     Process.put(@label_passed_through, passed_through?)
   end
 
+  @doc false
   @spec passed_through?() :: passed_through?
         when passed_through?: boolean()
   defp passed_through? do
