@@ -19,7 +19,6 @@ defmodule Nuntiux.Mocker do
   @type expect_id :: reference() | expect_name()
   @type expects :: %{expect_id() => expect_fun()}
 
-  @mocked_process_key :"#{__MODULE__}.mocked_process"
   @default_history []
   @default_opts %{
     passthrough?: true,
@@ -31,13 +30,15 @@ defmodule Nuntiux.Mocker do
     opts: @default_opts,
     expects: @default_expects
   }
-  @label_call :"$nuntiux.call"
-  @label_cast :"$nuntiux.cast"
-  @label_process_pid :"$nuntiux.process_pid"
-  @label_current_message :"$nuntiux.current_message"
-  @label_match :"$nuntiux.match"
-  @label_nomatch :"$nuntiux.nomatch"
-  @label_passed_through :"$nuntiux.passed_through"
+
+  @label_mocked_process :"#{__MODULE__}.mocked_process"
+  @label_call :"#{__MODULE__}.call"
+  @label_cast :"#{__MODULE__}.cast"
+  @label_process_pid :"#{__MODULE__}.process_pid"
+  @label_current_message :"#{__MODULE__}.current_message"
+  @label_match :"#{__MODULE__}.match"
+  @label_nomatch :"#{__MODULE__}.nomatch"
+  @label_passed_through :"#{__MODULE__}.passed_through"
 
   @typep received? :: boolean()
   @typep expect_fun_result :: term()
@@ -134,7 +135,7 @@ defmodule Nuntiux.Mocker do
       |> Process.whereis()
       |> Process.info(:dictionary)
 
-    Keyword.get(dict, @mocked_process_key)
+    Keyword.get(dict, @label_mocked_process)
   end
 
   @doc false
@@ -314,7 +315,7 @@ defmodule Nuntiux.Mocker do
   defp reregister(process_name, target_pid, source_pid \\ nil) do
     Process.unregister(process_name)
     Process.register(target_pid, process_name)
-    if is_pid(source_pid), do: Process.put(@mocked_process_key, source_pid)
+    if is_pid(source_pid), do: Process.put(@label_mocked_process, source_pid)
     :ok
   end
 
