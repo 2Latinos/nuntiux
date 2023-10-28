@@ -285,4 +285,11 @@ defmodule Nuntiux do
       end
     )
   end
+
+  defmodule Exception do
+    @moduledoc """
+    For when Nuntiux explicitly raises, in the `!` functions.
+    """
+    defexception [:message]
+  end
 end
