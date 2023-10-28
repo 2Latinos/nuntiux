@@ -62,7 +62,7 @@ defmodule NuntiuxTest do
       2 = send2(plus_oner_name, 1)
     end
 
-    test "raises an error if the process to mock doesn't exist" do
+    test "returns an error if the process to mock doesn't exist" do
       {:error, :not_found} = Nuntiux.new(:non_existing_process)
     end
 
