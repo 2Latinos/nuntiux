@@ -66,6 +66,12 @@ defmodule NuntiuxTest do
       {:error, :not_found} = Nuntiux.new(:non_existing_process)
     end
 
+    test "new!/1 raises an exception if the process to mock doesn't exist" do
+      assert_raise(Nuntiux.Exception, ~r/^Process .* not found\.$/, fn ->
+        Nuntiux.new!(:non_existing_process)
+      end)
+    end
+
     test "processes can be unmocked", %{
       plus_oner_pid: plus_oner_pid,
       plus_oner_name: plus_oner_name
@@ -189,6 +195,22 @@ defmodule NuntiuxTest do
       [] = Nuntiux.history(plus_oner_name)
       false = Nuntiux.received?(plus_oner_name, 1)
       false = Nuntiux.received?(plus_oner_name, 2)
+    end
+
+    test "allows pipelining for more concise code", %{plus_oner_name: plus_oner_name} do
+      ref =
+        plus_oner_name
+        |> Nuntiux.new!()
+        |> Nuntiux.expect!(fn _in -> :ok end)
+        |> Nuntiux.expect(fn _in -> :ok end)
+
+      true = is_reference(ref)
+    end
+
+    test "expect!/2 raises an exception if the target process is not mocked" do
+      assert_raise(Nuntiux.Exception, ~r/^Process .* not mocked\.$/, fn ->
+        Nuntiux.expect!(:non_existing_process, fn -> :irrelevant end)
+      end)
     end
 
     test "allows defining/consulting expectations", %{plus_oner_name: plus_oner_name} do

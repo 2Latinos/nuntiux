@@ -94,6 +94,22 @@ defmodule Nuntiux do
   end
 
   @doc """
+  The same as `new/2` but raises a `Nuntiux.Exception` in case of error.
+  """
+  @spec new!(process_name, opts) :: process_name
+        when process_name: process_name(),
+             opts: opts()
+  def new!(process_name, opts \\ %{}) do
+    case new(process_name, opts) do
+      {:error, :not_found} ->
+        raise(Nuntiux.Exception, message: "Process #{process_name} not found.")
+
+      :ok ->
+        process_name
+    end
+  end
+
+  @doc """
   Removes a mocking process or expect function.
   If the expect function was not already there, this function still returns 'ok'.
   """
@@ -234,6 +250,24 @@ defmodule Nuntiux do
         Nuntiux.Mocker.expect(process_name, expect_name, expect_fun)
       end
     )
+  end
+
+  @doc """
+  The same as `expect/3` but raises a `Nuntiux.Exception` in case of error.
+  """
+  @spec expect!(process_name, expect_name, expect_fun) :: process_name
+        when process_name: process_name(),
+             expect_name: nil | expect_name(),
+             expect_fun: expect_fun()
+
+  def expect!(process_name, expect_name \\ nil, expect_fun) do
+    case expect(process_name, expect_name, expect_fun) do
+      {:error, :not_mocked} ->
+        raise(Nuntiux.Exception, message: "Process #{process_name} not mocked.")
+
+      _expect_id ->
+        process_name
+    end
   end
 
   @doc """
