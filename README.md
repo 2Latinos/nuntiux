@@ -1,9 +1,9 @@
-# nuntiux [![Elixir CI][ci-img]][ci]
+# Nuntiux [![Elixir CI][ci-img]][ci]
 
 [ci]: https://github.com/2Latinos/nuntiux/actions
 [ci-img]: https://github.com/2Latinos/nuntiux/actions/workflows/elixir.yml/badge.svg
 
-`nuntiux` is an Elixir library to mock registered processes. Its main use case is to intercept
+Nuntiux is an Elixir library to mock registered processes. Its main use case is to intercept
 messages sent to specific processes and to allow the consumer to act upon them.
 
 It is a sister application to [nuntius](https://github.com/2Latinos/nuntius) initially developed
@@ -13,7 +13,7 @@ in an initial release.
 
 ## Usage
 
-`nuntiux` is best used via [Mix](https://hexdocs.pm/mix/main/Mix.html)'s `test` environment and
+Nuntiux is best used via [Mix](https://hexdocs.pm/mix/main/Mix.html)'s `test` environment and
 using the [`mix test`](https://hexdocs.pm/mix/Mix.Tasks.Test.html) task:
 
 1\. change your `mix.exs`' `deps` to include:
@@ -22,7 +22,7 @@ using the [`mix test`](https://hexdocs.pm/mix/Mix.Tasks.Test.html) task:
 {:nuntiux, "1.0.0", only: :test, runtime: false}
 ```
 
-2\. run your `nuntiux`-enabled tests with:
+2\. run your Nuntiux-enabled tests with:
 
 ```plain
 mix test
@@ -61,10 +61,10 @@ the mocked process.
 
 ## Caveats
 
-`Nuntiux` tries to execute your expectations by simply calling their declarations inside a
+Nuntiux tries to execute your expectations by simply calling their declarations inside a
 `try-catch` expression. Because of this, non-matching expectations will return a `function_clause`,
 that is caught.
-Since it's not possible (at this moment) to distinguish a `function_clause` provoked by `Nuntiux`'
+Since it's not possible (at this moment) to distinguish a `function_clause` provoked by Nuntiux's
 internal code or your own, we propose you to make sure your functions don't fail with a
 `function_clause`.
 You can also check the message history to understand if a given message was mocked and/or
