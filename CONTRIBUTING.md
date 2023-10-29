@@ -1,4 +1,4 @@
-# Contributing to nuntiux
+# Contributing to Nuntiux
 
 1. [License](#license)
 1. [Reporting a bug](#reporting-a-bug)
@@ -11,16 +11,16 @@
 
 ## License
 
-`nuntiux` is licensed under The [MIT](LICENSE.md) License, for all code.
+Nuntiux is licensed under The [MIT](LICENSE.md) License, for all code.
 
 ## Reporting a bug
 
-`nuntiux` is not perfect software and will be buggy.
+Nuntiux is not perfect software and will be buggy.
 
 Bugs can be reported via
 [GitHub issues: bug report](https://github.com/2Latinos/nuntiux/issues/new?template=bug_report.md).
 
-Some contributors and maintainers may be unpaid developers working on `nuntiux`, in their own time,
+Some contributors and maintainers may be unpaid developers working on Nuntiux, in their own time,
 with limited resources. We ask for respect and understanding, and will provide the same back.
 
 If your contribution is an actual bug fix, we ask you to include tests that, not only show the issue
@@ -40,7 +40,7 @@ If this is done, open up a
 
 We may discuss details with you regarding the implementation, and its inclusion within the project.
 
-We try to have as many of `nuntiux`'s features tested as possible. Everything that a user can do,
+We try to have as many of Nuntiux's features tested as possible. Everything that a user can do,
 and is repeatable in any way, should be tested, to guarantee backwards compatible.
 
 ## Submitting your changes
@@ -69,7 +69,7 @@ as possible. This will also help eventual automated changelog generation.
 
 ### Pull requests and branching
 
-All fixes to `nuntiux` end up requiring a +1 from one or more of the project's maintainers.
+All fixes to Nuntiux end up requiring a +1 from one or more of the project's maintainers.
 
 During the review process, you may be asked to correct or edit a few things before a final rebase
 to merge things. Do send edits as individual commits to allow for gradual and partial reviews to be
@@ -77,5 +77,5 @@ done by reviewers.
 
 ### Credits
 
-`nuntiux` has been improved by
+Nuntiux has been improved by
 [many contributors](https://github.com/2Latinos/nuntiux/graphs/contributors)!

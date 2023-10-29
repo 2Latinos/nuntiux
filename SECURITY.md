@@ -1,6 +1,6 @@
 # Security policy
 
-Thanks for helping make `nuntiux` safer for everyone.
+Thanks for helping make Nuntiux safer for everyone.
 
 Find below updated information on our security policy.
 
