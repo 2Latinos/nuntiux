@@ -46,16 +46,19 @@ processes, as well as other elements for debugging:
 passed through to the mocked process,
 * `:history?`: when `true` (default: `true`) all messages received by the mock process are
 classified as per [Understanding the message history](#understanding-the-message-history).
+* `:raise_on_nomatch?`: (default: `true`) check [Expectation handling](#expectation-handling) below.
 
 ## Understanding the message history
 
-History elements are classified with 4 keys:
+History elements are classified with 6 keys:
 
 * `:timestamp`: an integer representing Erlang system time in native time unit,
 * `:message`: the message that was received and/or potentially handled by expectations
 (or passed through),
-* `:mocked?`: an indication of whether or not any of the expecations you declared handled
+* `:mocked?`: an indication of whether or not any of the expectations you declared handled
 the message,
+* `:stack`: the stack trace, in case of an exception,
+* `:with`: the expectation return value,
 * `:passed_through?`: an indication of whether or not the received message was passed through to
 the mocked process.
 
@@ -69,6 +72,20 @@ internal code or your own, we propose you to make sure your functions don't fail
 `function_clause`.
 You can also check the message history to understand if a given message was mocked and/or
 passed through.
+
+## Expectation handling
+
+If, when Nuntiux executes your expectations, none matches the input (which means it's better
+to have a catch-all) it'll raise a `Nuntiux.Exception` and use `Logger` to log the exception
+in the test scope. This can be prevented by setting option `:raise_on_nomatch?` to `false`
+(the default is to raise an exception and log).
+
+On the other hand, if an exception occurs inside one of your expectations, Nuntiux will
+also raise a `Nuntiux.Exception` (and log it), so you can analyze what needs to be fixed. In
+these cases, it's probably also best your expectations are named, to ease debugging.
+
+Finally, if you're using ExUnit, remember to configure it with `capture_log: true`, or
+use the appropriate tag next to the failing tests, for easier debugging.
 
 ## Documentation
 
