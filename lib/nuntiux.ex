@@ -288,8 +288,8 @@ defmodule Nuntiux do
 
   defmodule Exception do
     @moduledoc """
-    For when Nuntiux explicitly raises, in the `!` functions.
+    For when Nuntiux explicitly raises.
     """
-    defexception [:message]
+    defexception message: nil, stack: nil
   end
 end
