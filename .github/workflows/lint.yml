@@ -5,14 +5,14 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # uses .markdownlint.yml for configuration
       - name: markdownlint
-        uses: DavidAnson/markdownlint-cli2-action@v11
+        uses: DavidAnson/markdownlint-cli2-action@v13
         with:
           globs: |
             .github/**/*.md
