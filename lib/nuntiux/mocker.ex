@@ -3,15 +3,20 @@ defmodule Nuntiux.Mocker do
   A process that mocks another one.
   """
 
+  require Logger
+
   @type opts :: %{
           optional(:passthrough?) => boolean(),
-          optional(:history?) => boolean()
+          optional(:history?) => boolean(),
+          optional(:raise_on_nomatch?) => boolean()
         }
   @type history :: [event()]
   @type event :: %{
           timestamp: integer(),
           message: term(),
           mocked?: boolean(),
+          stack: term(),
+          with: term(),
           passed_through?: boolean()
         }
   @type expect_fun :: (message: term() -> expect_fun_result())
@@ -19,11 +24,11 @@ defmodule Nuntiux.Mocker do
   @type expect_id :: reference() | expect_name()
   @type expects :: %{expect_id() => expect_fun()}
 
-  @mocked_process_key :"#{__MODULE__}.mocked_process"
   @default_history []
   @default_opts %{
     passthrough?: true,
-    history?: true
+    history?: true,
+    raise_on_nomatch?: true
   }
   @default_expects %{}
   @default_state %{
@@ -31,13 +36,14 @@ defmodule Nuntiux.Mocker do
     opts: @default_opts,
     expects: @default_expects
   }
-  @label_call :"$nuntiux.call"
-  @label_cast :"$nuntiux.cast"
-  @label_process_pid :"$nuntiux.process_pid"
-  @label_current_message :"$nuntiux.current_message"
-  @label_match :"$nuntiux.match"
-  @label_nomatch :"$nuntiux.nomatch"
-  @label_passed_through :"$nuntiux.passed_through"
+
+  @label_mocked_process :"#{__MODULE__}.mocked_process"
+  @label_call :"#{__MODULE__}.call"
+  @label_cast :"#{__MODULE__}.cast"
+  @label_process_pid :"#{__MODULE__}.process_pid"
+  @label_current_message :"#{__MODULE__}.current_message"
+  @label_nomatch :"#{__MODULE__}.nomatch"
+  @label_passed_through :"#{__MODULE__}.passed_through"
 
   @typep received? :: boolean()
   @typep expect_fun_result :: term()
@@ -60,7 +66,7 @@ defmodule Nuntiux.Mocker do
            :reset_history
            | {:delete, expect_id()}
            | {:expect, expect_id(), expect_fun()}
-  @typep expects_matched :: unquote(@label_nomatch) | {unquote(@label_match), expect_fun_result()}
+  @typep mocked_stack_with :: %{mocked?: boolean(), stack: nil | [term()], with: term()}
 
   @doc false
   @spec start_link(process_name, opts) :: ok | ignore
@@ -134,7 +140,7 @@ defmodule Nuntiux.Mocker do
       |> Process.whereis()
       |> Process.info(:dictionary)
 
-    Keyword.get(dict, @mocked_process_key)
+    Keyword.get(dict, @label_mocked_process)
   end
 
   @doc false
@@ -216,6 +222,7 @@ defmodule Nuntiux.Mocker do
     loop(state)
   end
 
+  @doc false
   @spec call(process_name, request) :: result_call
         when process_name: Nuntiux.process_name(),
              request: request_call(),
@@ -225,6 +232,7 @@ defmodule Nuntiux.Mocker do
     result
   end
 
+  @doc false
   @spec cast(process_name, request) :: ok
         when process_name: Nuntiux.process_name(),
              request: request_cast(),
@@ -234,6 +242,7 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
+  @doc false
   @spec loop(state) :: no_return
         when state: state(),
              no_return: no_return()
@@ -261,6 +270,7 @@ defmodule Nuntiux.Mocker do
     loop(next_state)
   end
 
+  @doc false
   @spec handle_call(request, state) :: result_call
         when request: request_call(),
              state: state(),
@@ -277,6 +287,7 @@ defmodule Nuntiux.Mocker do
     state.expects
   end
 
+  @doc false
   @spec handle_cast(request, state) :: updated_state
         when request: request_cast(),
              state: state(),
@@ -294,6 +305,7 @@ defmodule Nuntiux.Mocker do
     end
   end
 
+  @doc false
   @spec handle_message(message, state) :: updated_state
         when message: term(),
              state: state(),
@@ -301,11 +313,12 @@ defmodule Nuntiux.Mocker do
   defp handle_message(message, state) do
     current_message(message)
     passed_through?(false)
-    expects_matched = maybe_run_expects(message, state.expects)
-    maybe_passthrough(message, expects_matched, state.opts)
-    maybe_add_event(message, expects_matched, state)
+    mocked_stack_with = maybe_run_expects(message, state.expects, state.opts)
+    maybe_passthrough(message, mocked_stack_with, state.opts)
+    maybe_add_event(message, mocked_stack_with, state)
   end
 
+  @doc false
   @spec reregister(process_name, target_pid, source_pid) :: ok
         when process_name: Nuntiux.process_name(),
              target_pid: pid(),
@@ -314,64 +327,115 @@ defmodule Nuntiux.Mocker do
   defp reregister(process_name, target_pid, source_pid \\ nil) do
     Process.unregister(process_name)
     Process.register(target_pid, process_name)
-    if is_pid(source_pid), do: Process.put(@mocked_process_key, source_pid)
+    if is_pid(source_pid), do: Process.put(@label_mocked_process, source_pid)
     :ok
   end
 
-  @spec maybe_run_expects(message, expects) :: expects_matched
+  # credo:disable-for-lines:51 Credo.Check.Refactor.ABCSize
+  @doc false
+  @spec maybe_run_expects(message, expects, opts) :: mocked_stack_with
         when message: term(),
              expects: expects(),
-             expects_matched: expects_matched()
-  defp maybe_run_expects(message, expects) do
-    Enum.reduce_while(
-      expects,
-      @label_nomatch,
-      fn
-        {_expect_id, _expect_fun}, {@label_match, _matched} = result ->
-          {:halt, result}
+             opts: opts(),
+             mocked_stack_with: mocked_stack_with()
+  defp maybe_run_expects(message, expects, opts) do
+    no_match_fun = fn _msg -> @label_nomatch end
+    expects = Enum.reverse([{:_, no_match_fun} | Map.to_list(expects)])
 
-        {_expect_id, expect_fun}, @label_nomatch ->
-          try do
-            {:cont, {@label_match, expect_fun.(message)}}
-          catch
-            :error, :function_clause ->
-              {:cont, @label_nomatch}
-          end
-      end
-    )
+    mocked_stack_with =
+      Enum.reduce_while(
+        expects,
+        mocked_stack_with(false),
+        fn
+          {expect_id, expect_fun}, %{mocked?: false, stack: stack_trace} ->
+            try do
+              expect_fun.(message)
+            else
+              @label_nomatch ->
+                {:halt, mocked_stack_with(false, stack_trace)}
+
+              match ->
+                {:halt, mocked_stack_with(true, stack_trace, match)}
+            catch
+              class, reason ->
+                stack_elem = %{
+                  expect_id: expect_id,
+                  class: class,
+                  reason: reason,
+                  trace: __STACKTRACE__
+                }
+
+                {:cont, mocked_stack_with(false, stack_elem, nil, stack_trace)}
+            end
+        end
+      )
+
+    case mocked_stack_with do
+      %{mocked?: false, stack: stack_trace, with: nil} when opts.raise_on_nomatch? ->
+        ex_args = [message: "No expectation matched", stack: stack_trace]
+        Logger.error(ex_args)
+        raise(Nuntiux.Exception, ex_args)
+
+      _other ->
+        mocked_stack_with
+    end
   end
 
-  @spec maybe_passthrough(message, expects_matched, opts) :: ok
+  @doc false
+  @spec mocked_stack_with(mocked?, stack, with, prior_stack) :: mocked_stack_with
+        when mocked?: boolean(),
+             stack: term(),
+             with: term(),
+             prior_stack: term(),
+             mocked_stack_with: mocked_stack_with()
+  defp mocked_stack_with(mocked?, stack \\ nil, with \\ nil, prior_stack \\ nil) do
+    stack0 =
+      if stack != nil do
+        [stack]
+      end
+
+    stack =
+      if prior_stack != nil do
+        [prior_stack] ++ stack0
+      else
+        stack0
+      end
+
+    %{mocked?: mocked?, stack: stack, with: with}
+  end
+
+  @doc false
+  @spec maybe_passthrough(message, mocked_stack_with, opts) :: ok
         when message: term(),
-             expects_matched: expects_matched(),
+             mocked_stack_with: mocked_stack_with(),
              opts: opts(),
              ok: :ok
-  defp maybe_passthrough(_message, {@label_match, _expect_fun_result}, _opts) do
+  defp maybe_passthrough(_message, %{mocked?: true}, _opts) do
     :ok
   end
 
-  defp maybe_passthrough(_message, _expects_matched, %{passthrough?: false}) do
+  defp maybe_passthrough(_message, _mocked_stack_with, %{passthrough?: false}) do
     :ok
   end
 
-  defp maybe_passthrough(message, _expects_matched, _opts) do
+  defp maybe_passthrough(message, _mocked_stack_with, _opts) do
     passthrough(message)
   end
 
-  @spec maybe_add_event(message, expects_matched, state) :: updated_state
+  @doc false
+  @spec maybe_add_event(message, mocked_stack_with, state) :: updated_state
         when message: term(),
-             expects_matched: expects_matched(),
+             mocked_stack_with: mocked_stack_with(),
              state: state(),
              updated_state: state()
-  defp maybe_add_event(_message, _expects_matched, %{opts: %{history?: false}} = state) do
+  defp maybe_add_event(_message, _mocked_stack_with, %{opts: %{history?: false}} = state) do
     state
   end
 
-  defp maybe_add_event(message, expects_matched, state) do
+  defp maybe_add_event(message, mocked_stack_with, state) do
     {_current_value, state} =
       Map.get_and_update(state, :history, fn history ->
         timestamp = System.system_time()
-        mocked? = expects_matched != @label_nomatch
         passed_through? = passed_through?()
 
         {history,
@@ -379,7 +443,9 @@ defmodule Nuntiux.Mocker do
            %{
              timestamp: timestamp,
              message: message,
-             mocked?: mocked?,
+             mocked?: mocked_stack_with.mocked?,
+             stack: mocked_stack_with.stack,
+             with: mocked_stack_with.with,
              passed_through?: passed_through?
            }
            | history
@@ -389,6 +455,7 @@ defmodule Nuntiux.Mocker do
     state
   end
 
+  @doc false
   @spec process_pid(process_pid) :: ok
         when process_pid: pid(),
              ok: :ok
@@ -397,12 +464,14 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
+  @doc false
   @spec process_pid() :: pid
         when pid: pid()
   defp process_pid do
     Process.get(@label_process_pid)
   end
 
+  @doc false
   @spec current_message(message) :: ok
         when message: term(),
              ok: :ok
@@ -411,12 +480,14 @@ defmodule Nuntiux.Mocker do
     :ok
   end
 
+  @doc false
   @spec current_message() :: message
         when message: term()
   defp current_message do
     Process.get(@label_current_message)
   end
 
+  @doc false
   @spec passed_through?(new_passed_through?) :: old_passed_through?
         when new_passed_through?: boolean(),
              old_passed_through?: boolean()
@@ -424,6 +495,7 @@ defmodule Nuntiux.Mocker do
     Process.put(@label_passed_through, passed_through?)
   end
 
+  @doc false
   @spec passed_through?() :: passed_through?
         when passed_through?: boolean()
   defp passed_through? do

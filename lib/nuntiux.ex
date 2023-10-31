@@ -3,6 +3,7 @@ defmodule Nuntiux do
   This is Nuntiux.
   """
 
+  # The same as found in mix.exs
   @application :nuntiux
 
   @typedoc """
@@ -90,6 +91,22 @@ defmodule Nuntiux do
              error: {:error, :not_found}
   def new(process_name, opts \\ %{}) do
     Nuntiux.Supervisor.start_mock(process_name, opts)
+  end
+
+  @doc """
+  The same as `new/2` but raises a `Nuntiux.Exception` in case of error.
+  """
+  @spec new!(process_name, opts) :: process_name
+        when process_name: process_name(),
+             opts: opts()
+  def new!(process_name, opts \\ %{}) do
+    case new(process_name, opts) do
+      {:error, :not_found} ->
+        raise(Nuntiux.Exception, message: "Process #{process_name} not found.")
+
+      :ok ->
+        process_name
+    end
   end
 
   @doc """
@@ -236,6 +253,24 @@ defmodule Nuntiux do
   end
 
   @doc """
+  The same as `expect/3` but raises a `Nuntiux.Exception` in case of error.
+  """
+  @spec expect!(process_name, expect_name, expect_fun) :: process_name
+        when process_name: process_name(),
+             expect_name: nil | expect_name(),
+             expect_fun: expect_fun()
+
+  def expect!(process_name, expect_name \\ nil, expect_fun) do
+    case expect(process_name, expect_name, expect_fun) do
+      {:error, :not_mocked} ->
+        raise(Nuntiux.Exception, message: "Process #{process_name} not mocked.")
+
+      _expect_id ->
+        process_name
+    end
+  end
+
+  @doc """
   Returns the list of expect functions for a process.
   """
   @spec expects(process_name) :: expects | error
@@ -249,5 +284,12 @@ defmodule Nuntiux do
         Nuntiux.Mocker.expects(process_name)
       end
     )
+  end
+
+  defmodule Exception do
+    @moduledoc """
+    For when Nuntiux explicitly raises.
+    """
+    defexception message: nil, stack: nil
   end
 end

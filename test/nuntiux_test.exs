@@ -56,14 +56,20 @@ defmodule NuntiuxTest do
       2 = send2(plus_oner_name, 1)
 
       # We mock the process but we don't handle any message
-      :ok = Nuntiux.new(plus_oner_name)
+      :ok = Nuntiux.new(plus_oner_name, %{raise_on_nomatch?: false})
 
       # So, nothing changes
       2 = send2(plus_oner_name, 1)
     end
 
-    test "raises an error if the process to mock doesn't exist" do
+    test "returns an error if the process to mock doesn't exist" do
       {:error, :not_found} = Nuntiux.new(:non_existing_process)
+    end
+
+    test "new!/1 raises an exception if the process to mock doesn't exist" do
+      assert_raise(Nuntiux.Exception, ~r/^Process .* not found\.$/, fn ->
+        Nuntiux.new!(:non_existing_process)
+      end)
     end
 
     test "processes can be unmocked", %{
@@ -121,7 +127,7 @@ defmodule NuntiuxTest do
       {:error, :not_mocked} = Nuntiux.received?(plus_oner_name, :any_message)
 
       # We mock it
-      :ok = Nuntiux.new(plus_oner_name)
+      :ok = Nuntiux.new(plus_oner_name, %{raise_on_nomatch?: false})
 
       # Originally the history is empty
       [] = Nuntiux.history(plus_oner_name)
@@ -164,7 +170,7 @@ defmodule NuntiuxTest do
     end
 
     test "history is not available under certain conditions", %{plus_oner_name: plus_oner_name} do
-      :ok = Nuntiux.new(plus_oner_name, %{history?: false})
+      :ok = Nuntiux.new(plus_oner_name, %{history?: false, raise_on_nomatch?: false})
 
       # Originally the history is empty
       [] = Nuntiux.history(plus_oner_name)
@@ -189,6 +195,22 @@ defmodule NuntiuxTest do
       [] = Nuntiux.history(plus_oner_name)
       false = Nuntiux.received?(plus_oner_name, 1)
       false = Nuntiux.received?(plus_oner_name, 2)
+    end
+
+    test "allows pipelining for more concise code", %{plus_oner_name: plus_oner_name} do
+      ref =
+        plus_oner_name
+        |> Nuntiux.new!()
+        |> Nuntiux.expect!(fn _in -> :ok end)
+        |> Nuntiux.expect(fn _in -> :ok end)
+
+      true = is_reference(ref)
+    end
+
+    test "expect!/2 raises an exception if the target process is not mocked" do
+      assert_raise(Nuntiux.Exception, ~r/^Process .* not mocked\.$/, fn ->
+        Nuntiux.expect!(:non_existing_process, fn -> :irrelevant end)
+      end)
     end
 
     test "allows defining/consulting expectations", %{plus_oner_name: plus_oner_name} do
@@ -249,7 +271,7 @@ defmodule NuntiuxTest do
     end
 
     test "allows changing behaviour based on expectations", %{echoer_name: echoer_name} do
-      :ok = Nuntiux.new(echoer_name, %{passthrough?: false})
+      :ok = Nuntiux.new(echoer_name, %{passthrough?: false, raise_on_nomatch?: false})
       self = self()
       boomerang = :boomerang
       kylie = :kylie
@@ -271,7 +293,7 @@ defmodule NuntiuxTest do
           raise "timeout"
       end
 
-      # Check if a nonmatching expectation would also work
+      # Check if a non-matching expectation would also work
       send(echoer_name, :unknown)
 
       :ok =
@@ -293,7 +315,7 @@ defmodule NuntiuxTest do
       from_mocked = :from_mocked
       self = self()
 
-      :ok = Nuntiux.new(echoer_name)
+      :ok = Nuntiux.new(echoer_name, %{raise_on_nomatch?: false})
 
       _expect_id =
         Nuntiux.expect(
@@ -342,12 +364,12 @@ defmodule NuntiuxTest do
     test "allows passing a specific message, inside the expectation, down to the original process",
          %{echoer_name: echoer_name} do
       message = :message
-      :ok = Nuntiux.new(echoer_name, %{passthrough?: false})
+      :ok = Nuntiux.new(echoer_name, %{passthrough?: false, raise_on_nomatch?: false})
 
       _expect_id =
         Nuntiux.expect(
           echoer_name,
-          fn _anything ->
+          fn ^message ->
             # We pass a specific message to the mocked process
             Nuntiux.passthrough({self(), make_ref(), message})
 
@@ -371,26 +393,72 @@ defmodule NuntiuxTest do
       _expect_id =
         Nuntiux.expect(
           echoer_name,
-          fn _anything ->
+          fn ^new_message ->
             # We pass another specific message to the mocked process
-            Nuntiux.passthrough({self, make_ref(), new_message})
+            mocked = Nuntiux.mocked_process()
+            Nuntiux.passthrough({self, make_ref(), {new_message, mocked}})
           end
         )
 
       send(echoer_name, new_message)
 
+      mocked = Nuntiux.mocked_process(echoer_name)
+
       receive do
-        {_ref, ^new_message} ->
-          # ... but we don't get it back (outside the process)
-          raise "received"
-      after
-        250 ->
-          # Messages were explicitly passed through
+        {_ref, {^new_message, ^mocked}} ->
+          # ... and we get it back (from the mocked process - notice ^mocked_)
           [%{mocked?: true, passed_through?: true}, %{mocked?: true, passed_through?: true}] =
             Nuntiux.history(echoer_name)
-
-          :ok
+      after
+        250 ->
+          raise "not received"
       end
+    end
+
+    @tag capture_log: true
+    test "allows a consumer to see errors from inside the expectation", %{
+      plus_oner_name: plus_oner_name
+    } do
+      fun = fn ->
+        try do
+          plus_oner_name
+          |> Nuntiux.new!()
+          |> Nuntiux.expect!(:error_inside_expect, fn {_self, _ref, 1} ->
+            Enum.sort(:fff)
+          end)
+          |> send2(1)
+        catch
+          _class, _reason -> :ok
+        end
+      end
+
+      captured_log = ExUnit.CaptureLog.capture_log(fun)
+      assert captured_log =~ "No expectation matched"
+      assert captured_log =~ "expect_id: :error_inside_expect"
+      assert captured_log =~ "value: :fff"
+    end
+
+    @tag capture_log: true
+    test "raises an exception if a function has a non-matching head", %{
+      plus_oner_name: plus_oner_name
+    } do
+      fun = fn ->
+        try do
+          plus_oner_name
+          |> Nuntiux.new!()
+          |> Nuntiux.expect!(:no_head_matches, fn {_self, _ref, 14} ->
+            :no_match_13_to_14
+          end)
+          |> send2(13)
+        catch
+          _class, _reason -> :ok
+        end
+      end
+
+      captured_log = ExUnit.CaptureLog.capture_log(fun)
+      assert captured_log =~ "No expectation matched"
+      assert captured_log =~ "expect_id: :no_head_matches"
+      assert captured_log =~ ":function_clause"
     end
   end
 
