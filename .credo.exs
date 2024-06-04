@@ -5,7 +5,6 @@
       strict: true,
       # These are not in the default list
       checks: [
-        {Credo.Check.Consistency.ExceptionNames, []},
         {Credo.Check.Consistency.MultiAliasImportRequireUse, []},
         {Credo.Check.Consistency.UnusedVariableNames, []},
         {Credo.Check.Readability.BlockPipe, []},
@@ -23,7 +22,6 @@
         # {Credo.Check.Readability.WithCustomTaggedTuple, []},
         {Credo.Check.Refactor.ABCSize, []},
         {Credo.Check.Refactor.AppendSingleItem, []},
-        {Credo.Check.Refactor.Apply, []},
         {Credo.Check.Refactor.CaseTrivialMatches, []},
         {Credo.Check.Refactor.DoubleBooleanNegation, []},
         {Credo.Check.Refactor.FilterReject, []},
@@ -35,7 +33,6 @@
         {Credo.Check.Refactor.PerceivedComplexity, []},
         {Credo.Check.Refactor.PipeChainStart, []},
         {Credo.Check.Refactor.RejectFilter, []},
-        {Credo.Check.Refactor.RejectReject, []},
         {Credo.Check.Refactor.VariableRebinding, []},
         {Credo.Check.Warning.ForbiddenModule, []},
         {Credo.Check.Warning.LeakyEnvironment, []},
