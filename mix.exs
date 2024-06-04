@@ -2,7 +2,7 @@ defmodule Nuntiux.MixProject do
   use Mix.Project
 
   @version "1.0.0"
-  @elixir "~> 1.12"
+  @elixir "~> 1.16"
 
   @github "https://github.com/2Latinos/nuntiux"
 
@@ -47,9 +47,9 @@ defmodule Nuntiux.MixProject do
 
   defp deps do
     [
-      {:credo, "1.7.0", only: [:dev, :test], runtime: false},
-      {:dialyxir, "1.3.0", only: [:dev, :test], runtime: false},
-      {:ex_doc, "0.29.4", only: [:dev, :test], runtime: false}
+      {:credo, "1.7.6", only: [:dev, :test], runtime: false},
+      {:dialyxir, "1.4.3", only: [:dev, :test], runtime: false},
+      {:ex_doc, "0.34.0", only: [:dev, :test], runtime: false}
     ]
   end
 
