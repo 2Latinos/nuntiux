@@ -6,9 +6,9 @@
 Nuntiux is an Elixir library to mock registered processes. Its main use case is to intercept
 messages sent to specific processes and to allow the consumer to act upon them.
 
-It is a sister application to [nuntius](https://github.com/2Latinos/nuntius) initially developed
-by Brujo Benavides and Paulo Ferraz de Oliveira, now replicated as a learning
-exercise, though our goal is to have the same (equivalent) interface and target the same use cases
+It is the Elixir-native equivalent of [nuntius](https://github.com/2Latinos/nuntius), initially
+developed by Brujo Benavides and Paulo Ferraz de Oliveira for [CodeSync 2022](https://codesync.global/conferences/code-beam-sto-2022/tutorial/#32building-a-maintainable-open-source-library-with-erlang-otp-a-speedrun).
+It is our goal for the two to have the same (equivalent) interface and target the same use cases
 in an initial release.
 
 ## Usage
