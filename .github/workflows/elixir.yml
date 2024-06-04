@@ -23,15 +23,8 @@ jobs:
 
     strategy:
       matrix:
-        otp: ['24', '25', '26']
-        elixir: ['1.13', '1.14', '1.15']
-        exclude:
-          - otp: '25'
-            elixir: '1.12'
-          - otp: '26'
-            elixir: '1.12'
-          - otp: '26'
-            elixir: '1.13'
+        otp: ['25', '26']
+        elixir: ['1.15', '1.16']
         include:
           - otp: ${{needs.tool-versions.outputs.otp}}
             elixir: ${{needs.tool-versions.outputs.elixir}}
@@ -44,7 +37,7 @@ jobs:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
       - name: Restore _build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: _build
           key: "_build-cache-for\
@@ -53,7 +46,7 @@ jobs:
                 -elixir-${{steps.setup-beam.outputs.elixir-version}}\
                 -hash-${{hashFiles('mix.lock')}}"
       - name: Restore deps
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: deps
           key: "deps-cache-for\
