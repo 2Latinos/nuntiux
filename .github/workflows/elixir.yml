@@ -37,7 +37,7 @@ jobs:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
       - name: Restore _build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: _build
           key: "_build-cache-for\
@@ -46,7 +46,7 @@ jobs:
                 -elixir-${{steps.setup-beam.outputs.elixir-version}}\
                 -hash-${{hashFiles('mix.lock')}}"
       - name: Restore deps
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: deps
           key: "deps-cache-for\
