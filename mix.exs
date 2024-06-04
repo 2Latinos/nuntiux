@@ -2,7 +2,7 @@ defmodule Nuntiux.MixProject do
   use Mix.Project
 
   @version "1.0.0"
-  @elixir "~> 1.16"
+  @elixir "~> 1.15"
 
   @github "https://github.com/2Latinos/nuntiux"
 
