@@ -476,6 +476,15 @@ defmodule NuntiuxTest do
       assert captured_log =~ "expect_id: :no_head_matches"
       assert captured_log =~ ":function_clause"
     end
+
+    test "new!/1 raises an exception if trying to mock a mock", %{
+      plus_oner_name: plus_oner_name
+    } do
+      assert_raise(Nuntiux.Exception, ~r/^Process .* is already mocked\.$/, fn ->
+        Nuntiux.new!(plus_oner_name)
+        Nuntiux.new!(plus_oner_name)
+      end)
+    end
   end
 
   defp send2(dest, msg) do
