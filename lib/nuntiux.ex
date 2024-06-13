@@ -89,9 +89,15 @@ defmodule Nuntiux do
         when process_name: process_name(),
              opts: opts(),
              ok: :ok,
-             error: {:error, :not_found}
+             error: {:error, :not_found | :already_mocked}
   def new(process_name, opts \\ %{}) do
-    Nuntiux.Supervisor.start_mock(process_name, opts)
+    case mocked_process(process_name) do
+      {:error, :not_mocked} ->
+        Nuntiux.Supervisor.start_mock(process_name, opts)
+
+      _pid ->
+        {:error, :already_mocked}
+    end
   end
 
   @doc """
@@ -104,6 +110,9 @@ defmodule Nuntiux do
     case new(process_name, opts) do
       {:error, :not_found} ->
         raise(Nuntiux.Exception, message: "Process #{process_name} not found.")
+
+      {:error, :already_mocked} ->
+        raise(Nuntiux.Exception, message: "Process #{process_name} is already mocked.")
 
       :ok ->
         process_name
