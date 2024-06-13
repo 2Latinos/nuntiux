@@ -78,6 +78,7 @@ defmodule Nuntiux do
   @spec stop() :: ok
         when ok: :ok
   def stop do
+    Enum.each(mocked(), &delete/1)
     Application.stop(@application)
   end
 

@@ -51,6 +51,22 @@ defmodule NuntiuxTest do
       :ok = Nuntiux.stop()
     end
 
+    test "unmocks all processes before stopping", %{
+      plus_oner_name: plus_oner_name,
+      plus_oner_pid: plus_oner_pid,
+      echoer_name: echoer_name,
+      echoer_pid: echoer_pid
+    } do
+      ^plus_oner_name = Nuntiux.new!(plus_oner_name)
+      ^echoer_name = Nuntiux.new!(echoer_name)
+      [:plus_oner, :echoer] = Nuntiux.mocked()
+
+      :ok = Nuntiux.stop()
+      # Compare to original pid, to make sure the registry was restored
+      ^plus_oner_pid = Process.whereis(plus_oner_name)
+      ^echoer_pid = Process.whereis(echoer_name)
+    end
+
     test "has a practically invisible default mock", %{plus_oner_name: plus_oner_name} do
       # Original state
       2 = send2(plus_oner_name, 1)
