@@ -19,7 +19,7 @@ using the [`mix test`](https://hexdocs.pm/mix/Mix.Tasks.Test.html) task:
 1\. change your `mix.exs`' `deps` to include:
 
 ```elixir
-{:nuntiux, "1.0.0", only: :test, runtime: false}
+{:nuntiux, "1.0.1", only: :test, runtime: false}
 ```
 
 2\. run your Nuntiux-enabled tests with:
