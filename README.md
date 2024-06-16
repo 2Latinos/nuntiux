@@ -101,7 +101,7 @@ It is also available, online, at [hexdocs.pm/nuntiux](https://hexdocs.pm/nuntiux
 
 ## Examples
 
-Examples are found inside folder [examples](examples).
+Examples are found at [github.com/nuntiux/examples](https://github.com/2Latinos/nuntiux/tree/main/examples).
 
 ## Versioning
 
