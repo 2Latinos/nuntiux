@@ -1,0 +1,3 @@
+%{
+  "nuntiux": {:hex, :nuntiux, "1.0.1", "22d7eabe6960aa1349fe802022a4d03169d609ea8532b520ad62aef55d0533eb", [:mix], [], "hexpm", "df090d7b6aee959056290e83cc52e5abde9a197a67969f1ced04fb50030f616d"},
+}
